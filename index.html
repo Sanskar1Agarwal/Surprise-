@@ -38,7 +38,7 @@ h1 {
 }
 
 button {
-    padding: 14px 28px;
+    padding: 14px 30px;
     font-size: 18px;
     border: none;
     border-radius: 30px;
@@ -47,15 +47,10 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background: #e0315b;
-}
-
 canvas {
     width: 100%;
     max-width: 520px;
     height: auto;
-    cursor: pointer;
 }
 </style>
 </head>
@@ -65,7 +60,7 @@ canvas {
 <!-- PAGE 1 -->
 <div id="page1" class="page active">
     <h1>Happy Birthday 🎈</h1>
-    <button onclick="goToCake()">Start 🎂</button>
+    <button id="startBtn">Start 🎂</button>
 </div>
 
 <!-- PAGE 2 -->
@@ -74,25 +69,39 @@ canvas {
 </div>
 
 <script>
-/* ================= PAGE SWITCH ================= */
-function goToCake() {
-    document.getElementById("page1").classList.remove("active");
-    document.getElementById("page2").classList.add("active");
-    startMic(); // mic starts ONLY after button click
-}
+/* ================= PAGE SWITCH + MIC (FIXED) ================= */
+const startBtn = document.getElementById("startBtn");
+const page1 = document.getElementById("page1");
+const page2 = document.getElementById("page2");
 
-/* ================= CANVAS SETUP ================= */
+startBtn.addEventListener("click", async () => {
+    // PAGE SWITCH
+    page1.classList.remove("active");
+    page2.classList.add("active");
+
+    // START MIC — DIRECT USER GESTURE ✅
+    await startMic();
+});
+
+/* ================= CANVAS ================= */
 const canvas = document.getElementById("cakeCanvas");
 const ctx = canvas.getContext("2d");
 
-const center = { x: 260, y: 260 };
+let center = { x: canvas.width / 2, y: canvas.height / 2 };
 const radius = 170;
 const cakeHeight = 90;
 const maxCuts = 6;
 
 let cuts = 0;
 let flameOn = true;
-let micStarted = false;
+
+/* ================= RESIZE FIX ================= */
+function updateCenter() {
+    center.x = canvas.width / 2;
+    center.y = canvas.height / 2;
+    drawCake();
+}
+window.addEventListener("resize", updateCenter);
 
 /* ================= CAKE DATA ================= */
 let slices = [{
@@ -110,7 +119,7 @@ function drawCake() {
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Chocolate sponge
+        // Sponge
         ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
@@ -118,7 +127,7 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Strawberry cream
+        // Cream
         ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
@@ -150,7 +159,7 @@ function drawCandle() {
     }
 }
 
-/* ================= CAKE CUTTING ================= */
+/* ================= CAKE CUT ================= */
 function cutCake() {
     if (cuts >= maxCuts) return;
 
@@ -166,7 +175,6 @@ function cutCake() {
             offset: 0
         });
     }
-
     animateSplit();
 }
 
@@ -181,11 +189,8 @@ function animateSplit() {
     anim();
 }
 
-/* ================= MICROPHONE (ONLY WAY TO BLOW) ================= */
+/* ================= MICROPHONE (REAL FIX) ================= */
 async function startMic() {
-    if (micStarted) return;
-    micStarted = true;
-
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -208,15 +213,15 @@ async function startMic() {
             }
             const rms = Math.sqrt(sum / data.length);
 
-            if (rms > 0.1 && flameOn) {
+            if (rms > 0.12 && flameOn) {
                 flameOn = false;
                 drawCake();
             }
             requestAnimationFrame(listen);
         }
         listen();
-    } catch (e) {
-        console.warn("Microphone blocked or unavailable");
+    } catch (err) {
+        alert("Microphone access is required to blow the candle 🎤");
     }
 }
 
@@ -224,7 +229,7 @@ async function startMic() {
 canvas.addEventListener("click", cutCake);
 
 /* Init */
-drawCake();
+updateCenter();
 </script>
 
 </body>
