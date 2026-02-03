@@ -72,33 +72,33 @@ canvas{
 
 <script>
 /* PAGE SWITCH */
-const startBtn=document.getElementById("startBtn");
-const page1=document.getElementById("page1");
-const page2=document.getElementById("page2");
+const startBtn = document.getElementById("startBtn");
+const page1 = document.getElementById("page1");
+const page2 = document.getElementById("page2");
 
-startBtn.onclick=async()=>{
+startBtn.onclick = async () => {
     page1.classList.remove("active");
     page2.classList.add("active");
     await startMic();
 };
 
 /* CANVAS */
-const canvas=document.getElementById("cake");
-const ctx=canvas.getContext("2d");
+const canvas = document.getElementById("cake");
+const ctx = canvas.getContext("2d");
 
-const center={x:canvas.width/2,y:canvas.height/2};
-const topRadius=170;
-const spongeRadius=160;
-const cakeHeight=70;
+const center = { x: canvas.width/2, y: canvas.height/2 };
+const topRadius = 160;
+const bottomRadius = 160;
+const cakeHeight = 70;
 
-let flameOn=true;
-let flameT=0;
-let cuts=0;
-const maxCuts=6;
+let flameOn = true;
+let flameT = 0;
+let cuts = 0;
+const maxCuts = 6;
 
-let slices=[{start:0,end:Math.PI*2,offset:0}];
+let slices = [{ start: 0, end: Math.PI*2, offset: 0 }];
 
-/* DRAW */
+/* DRAW CAKE (NO OVERLAP) */
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -107,17 +107,19 @@ function drawCake(){
         const ox=s.offset*Math.cos(mid);
         const oy=s.offset*Math.sin(mid);
 
+        /* SIDE WALL (SPONGE) */
         ctx.fillStyle="#8b4513";
         ctx.beginPath();
-        ctx.moveTo(center.x+ox,center.y+oy+cakeHeight);
-        ctx.arc(center.x+ox,center.y+oy+cakeHeight,spongeRadius,s.start,s.end);
+        ctx.arc(center.x+ox, center.y+oy+cakeHeight, bottomRadius, s.start, s.end);
+        ctx.arc(center.x+ox, center.y+oy, topRadius, s.end, s.start, true);
         ctx.closePath();
         ctx.fill();
 
+        /* TOP CREAM */
         ctx.fillStyle="#ff8fab";
         ctx.beginPath();
-        ctx.moveTo(center.x+ox,center.y+oy);
-        ctx.arc(center.x+ox,center.y+oy,topRadius,s.start,s.end);
+        ctx.moveTo(center.x+ox, center.y+oy);
+        ctx.arc(center.x+ox, center.y+oy, topRadius, s.start, s.end);
         ctx.closePath();
         ctx.fill();
 
@@ -128,6 +130,7 @@ function drawCake(){
     drawCandle();
 }
 
+/* CANDLE */
 function drawCandle(){
     const x=center.x;
     const y=center.y-topRadius-35;
@@ -166,7 +169,7 @@ canvas.onclick=()=>{
     }
 };
 
-/* MICROPHONE — FREQUENCY BASED (WORKS) */
+/* MICROPHONE (frequency-based) */
 async function startMic(){
     const bar=document.getElementById("micLevel");
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -184,8 +187,6 @@ async function startMic(){
 
     function listen(){
         analyser.getByteFrequencyData(freq);
-
-        // Focus on low frequencies (voice/breath sound)
         let energy=0;
         for(let i=2;i<20;i++) energy+=freq[i];
         energy/=18;
