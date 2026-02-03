@@ -23,7 +23,6 @@
         width: 100%;
         max-width: 600px;
         padding: 20px;
-        box-sizing: border-box;
     }
 
     h1 {
@@ -86,6 +85,7 @@ function makeToppings(start, end) {
 }
 slices[0].toppings = makeToppings(0, Math.PI * 2);
 
+// 🎂 Draw cake
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -126,24 +126,17 @@ function drawCake() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Seeds & strawberries
         slice.toppings.forEach(t => {
             ctx.fillStyle = "#ffd166";
             ctx.beginPath();
-            ctx.arc(
-                center.x + ox + t.seedR * Math.cos(t.angle),
-                center.y + oy + t.seedR * Math.sin(t.angle),
-                2, 0, Math.PI * 2
-            );
+            ctx.arc(center.x + ox + t.seedR * Math.cos(t.angle),
+                    center.y + oy + t.seedR * Math.sin(t.angle), 2, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = "#d00000";
             ctx.beginPath();
-            ctx.arc(
-                center.x + ox + t.r * Math.cos(t.angle),
-                center.y + oy + t.r * Math.sin(t.angle),
-                5, 0, Math.PI * 2
-            );
+            ctx.arc(center.x + ox + t.r * Math.cos(t.angle),
+                    center.y + oy + t.r * Math.sin(t.angle), 5, 0, Math.PI * 2);
             ctx.fill();
         });
     });
@@ -151,23 +144,20 @@ function drawCake() {
     drawCandle();
 }
 
-// 🎂 Candle
+// 🕯 Candle
 function drawCandle() {
     const x = center.x;
     const y = center.y - radius - 35;
 
-    // Candle body
     ctx.fillStyle = "#fff";
     ctx.fillRect(x - 6, y, 12, 35);
 
-    // Wick
     ctx.strokeStyle = "#000";
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x, y - 6);
     ctx.stroke();
 
-    // Flame
     if (flameOn) {
         ctx.fillStyle = "#ffb703";
         ctx.beginPath();
@@ -176,7 +166,7 @@ function drawCandle() {
     }
 }
 
-// Cake cutting
+// 🔪 Cut cake
 function cutCake() {
     if (cuts >= maxCuts) return;
 
@@ -208,25 +198,33 @@ function animateSplit() {
     anim();
 }
 
-// 🎤 Microphone candle blow
+// 🎤 MICROPHONE — FIXED METHOD
 async function startMic() {
     if (micStarted) return;
     micStarted = true;
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioCtx = new AudioContext();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
+
     const mic = audioCtx.createMediaStreamSource(stream);
     const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
+    analyser.fftSize = 1024;
     mic.connect(analyser);
 
-    const data = new Uint8Array(analyser.frequencyBinCount);
+    const data = new Uint8Array(analyser.fftSize);
 
     function listen() {
-        analyser.getByteFrequencyData(data);
-        const volume = data.reduce((a, b) => a + b) / data.length;
+        analyser.getByteTimeDomainData(data);
 
-        if (volume > 45 && flameOn) {
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+
+        if (rms > 0.08 && flameOn) { // breath threshold
             flameOn = false;
             drawCake();
         }
@@ -235,9 +233,10 @@ async function startMic() {
     listen();
 }
 
+// User interaction (required)
 canvas.addEventListener("click", () => {
     cutCake();
-    startMic(); // mic starts on first interaction
+    startMic();
 });
 
 drawCake();
