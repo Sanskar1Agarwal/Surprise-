@@ -72,33 +72,32 @@ canvas{
 
 <script>
 /* PAGE SWITCH */
-const startBtn = document.getElementById("startBtn");
-const page1 = document.getElementById("page1");
-const page2 = document.getElementById("page2");
+const startBtn=document.getElementById("startBtn");
+const page1=document.getElementById("page1");
+const page2=document.getElementById("page2");
 
-startBtn.onclick = async () => {
+startBtn.onclick=async()=>{
     page1.classList.remove("active");
     page2.classList.add("active");
     await startMic();
 };
 
 /* CANVAS */
-const canvas = document.getElementById("cake");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("cake");
+const ctx=canvas.getContext("2d");
 
-const center = { x: canvas.width/2, y: canvas.height/2 };
-const topRadius = 160;
-const bottomRadius = 160;
-const cakeHeight = 70;
+const center={x:canvas.width/2,y:canvas.height/2};
+const radius=160;
+const cakeHeight=70;
 
-let flameOn = true;
-let flameT = 0;
-let cuts = 0;
-const maxCuts = 6;
+let flameOn=true;
+let flameT=0;
+let cuts=0;
+const maxCuts=6;
 
-let slices = [{ start: 0, end: Math.PI*2, offset: 0 }];
+let slices=[{start:0,end:Math.PI*2,offset:0}];
 
-/* DRAW CAKE (NO OVERLAP) */
+/* DRAW CAKE — CORRECT SOLID SLICES */
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -107,19 +106,38 @@ function drawCake(){
         const ox=s.offset*Math.cos(mid);
         const oy=s.offset*Math.sin(mid);
 
-        /* SIDE WALL (SPONGE) */
+        const cx=center.x+ox;
+        const cy=center.y+oy;
+
+        /* INNER CUT FACE (SPONGE) */
+        ctx.fillStyle="#a0522d";
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(
+            cx + radius*Math.cos(s.start),
+            cy + radius*Math.sin(s.start)
+        );
+        ctx.lineTo(
+            cx + radius*Math.cos(s.start),
+            cy + radius*Math.sin(s.start) + cakeHeight
+        );
+        ctx.lineTo(cx,cy + cakeHeight);
+        ctx.closePath();
+        ctx.fill();
+
+        /* OUTER SPONGE WALL */
         ctx.fillStyle="#8b4513";
         ctx.beginPath();
-        ctx.arc(center.x+ox, center.y+oy+cakeHeight, bottomRadius, s.start, s.end);
-        ctx.arc(center.x+ox, center.y+oy, topRadius, s.end, s.start, true);
+        ctx.arc(cx,cy+cakeHeight,radius,s.start,s.end);
+        ctx.arc(cx,cy,radius,s.end,s.start,true);
         ctx.closePath();
         ctx.fill();
 
         /* TOP CREAM */
         ctx.fillStyle="#ff8fab";
         ctx.beginPath();
-        ctx.moveTo(center.x+ox, center.y+oy);
-        ctx.arc(center.x+ox, center.y+oy, topRadius, s.start, s.end);
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,radius,s.start,s.end);
         ctx.closePath();
         ctx.fill();
 
@@ -133,7 +151,7 @@ function drawCake(){
 /* CANDLE */
 function drawCandle(){
     const x=center.x;
-    const y=center.y-topRadius-35;
+    const y=center.y-radius-35;
 
     ctx.fillStyle="#fff";
     ctx.fillRect(x-6,y,12,35);
@@ -165,11 +183,15 @@ canvas.onclick=()=>{
     const step=Math.PI*2/(cuts+1);
     slices=[];
     for(let i=0;i<cuts+1;i++){
-        slices.push({start:i*step,end:(i+1)*step,offset:35});
+        slices.push({
+            start:i*step,
+            end:(i+1)*step,
+            offset:35
+        });
     }
 };
 
-/* MICROPHONE (frequency-based) */
+/* MICROPHONE (frequency based) */
 async function startMic(){
     const bar=document.getElementById("micLevel");
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
