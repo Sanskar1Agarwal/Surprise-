@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Decorative Interactive Cake</title>
+<title>Realistic Cake Cutting</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -43,169 +43,108 @@
 </head>
 <body>
 
-<h1>Decorative Cake 🎂</h1>
-<p>Click on a slice to cut it!</p>
+<h1>Realistic Cake Cutting 🎂</h1>
+<p>Click the cake to cut it into equal slices (max 6 cuts)!</p>
 <canvas id="cakeCanvas" width="500" height="500"></canvas>
-<div id="info">Slices: 1 | Cuts: 0</div>
+<div id="info">Slices cut: 0 | Pieces: 1</div>
 <button onclick="resetCake()">Reset Cake</button>
-<button onclick="saveCake()">Save Cake</button>
 
 <script>
 const canvas = document.getElementById('cakeCanvas');
 const ctx = canvas.getContext('2d');
-const radius = canvas.width/2 - 30;
+const radius = canvas.width / 2 - 40;
 const center = {x: canvas.width/2, y: canvas.height/2};
-let slices = [{start:0,end:2*Math.PI}];
-let hoverSlice = null;
 
-// Colors for layers
-const layerColors = ['#F4C2C2','#FFDAB9','#FFFACD','#D1E231','#87CEFA','#F5DEB3'];
+const maxCuts = 6;
+let cutCount = 0;
+let slices = [{start:0,end:2*Math.PI,offset:0}];
 
-// Draw frosting wavy
-function drawFrosting(x,y,radius,color){
-    ctx.fillStyle=color;
-    ctx.beginPath();
-    for(let i=0;i<Math.PI*2;i+=Math.PI/12){
-        const wave = Math.sin(i*6)*5;
-        const px = x + (radius+wave)*Math.cos(i);
-        const py = y + (radius+wave)*Math.sin(i);
-        if(i===0) ctx.moveTo(px,py);
-        else ctx.lineTo(px,py);
-    }
-    ctx.closePath();
-    ctx.fill();
-}
-
-// Draw toppings
-function drawToppings(slice){
-    const num = Math.floor(Math.random()*6)+3;
+function drawSprinkles(slice){
+    const num = 15;
     for(let i=0;i<num;i++){
         const angle = slice.start + Math.random()*(slice.end-slice.start);
-        const r = radius*0.4 + Math.random()*radius*0.4;
-        const x = center.x + r*Math.cos(angle);
-        const y = center.y + r*Math.sin(angle);
+        const r = Math.random()*radius*0.7;
+        const x = center.x + (r+slice.offset)*Math.cos(angle);
+        const y = center.y + (r+slice.offset)*Math.sin(angle);
         ctx.beginPath();
-        ctx.fillStyle=['#FF0000','#00FF00','#FFFF00','#FFA500'][Math.floor(Math.random()*4)];
-        ctx.arc(x,y,4,0,Math.PI*2);
+        ctx.fillStyle=['#FF0000','#00FF00','#FFFF00','#FFA500','#FF69B4'][Math.floor(Math.random()*5)];
+        ctx.arc(x,y,3,0,Math.PI*2);
         ctx.fill();
     }
 }
 
-// Draw candles
-function drawCandles(slice){
-    const midAngle=(slice.start+slice.end)/2;
-    const r=radius*0.7;
-    const x=center.x+r*Math.cos(midAngle);
-    const y=center.y+r*Math.sin(midAngle);
-    ctx.fillStyle='#FFFFFF';
-    ctx.fillRect(x-3,y-20,6,20);
-    // Flame
-    ctx.beginPath();
-    ctx.fillStyle='orange';
-    ctx.arc(x,y-22,4,0,Math.PI*2);
-    ctx.fill();
-}
-
-// Draw the decorative cake
-function drawCake(highlight=null){
+function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Draw layers
-    for(let l=layerColors.length-1;l>=0;l--){
-        const layerRadius = radius - l*20;
-        ctx.fillStyle=layerColors[l];
-        ctx.beginPath();
-        ctx.arc(center.x,center.y,layerRadius,0,Math.PI*2);
-        ctx.fill();
-        drawFrosting(center.x,center.y,layerRadius,'#FFFFFF');
-    }
+    slices.forEach(slice=>{
+        const offsetX = slice.offset*Math.cos((slice.start+slice.end)/2);
+        const offsetY = slice.offset*Math.sin((slice.start+slice.end)/2);
 
-    // Draw slices
-    slices.forEach((slice,i)=>{
-        if(highlight===i){
-            ctx.fillStyle='rgba(255,255,255,0.3)';
-            ctx.beginPath();
-            ctx.moveTo(center.x,center.y);
-            ctx.arc(center.x,center.y,radius,slice.start,slice.end);
-            ctx.closePath();
-            ctx.fill();
-        }
+        // Draw cake slice
+        const grad = ctx.createRadialGradient(center.x+offsetX, center.y+offsetY, radius*0.2, center.x+offsetX, center.y+offsetY, radius);
+        grad.addColorStop(0,'#fff5e6'); // icing
+        grad.addColorStop(0.3,'#FFDAB9'); // cake
+        grad.addColorStop(1,'#FFB07C');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(center.x+offsetX, center.y+offsetY);
+        ctx.arc(center.x+offsetX, center.y+offsetY, radius, slice.start, slice.end);
+        ctx.closePath();
+        ctx.fill();
 
         // Slice border
         ctx.strokeStyle='#8B4513';
         ctx.lineWidth=2;
-        ctx.beginPath();
-        ctx.moveTo(center.x,center.y);
-        ctx.lineTo(center.x+radius*Math.cos(slice.start),center.y+radius*Math.sin(slice.start));
-        ctx.moveTo(center.x,center.y);
-        ctx.lineTo(center.x+radius*Math.cos(slice.end),center.y+radius*Math.sin(slice.end));
         ctx.stroke();
 
-        // Slice number
-        const midAngle=(slice.start+slice.end)/2;
-        const textX=center.x+(radius/2)*Math.cos(midAngle);
-        const textY=center.y+(radius/2)*Math.sin(midAngle);
-        ctx.fillStyle='#5C4033';
-        ctx.font='bold 16px Arial';
-        ctx.textAlign='center';
-        ctx.textBaseline='middle';
-        ctx.fillText(i+1,textX,textY);
-
-        drawToppings(slice);
-        drawCandles(slice);
+        // Draw sprinkles
+        drawSprinkles(slice);
     });
 }
 
-// Slice logic
-function getSliceIndex(x,y){
-    const angle=Math.atan2(y-center.y,x-center.x);
-    return slices.findIndex(s=>{
-        if(s.start<s.end) return angle>=s.start && angle<=s.end;
-        else return angle>=s.start || angle<=s.end;
-    });
+function cutCake(){
+    if(cutCount>=maxCuts) return;
+
+    cutCount++;
+    const numSlices = cutCount;
+    const angle = 2*Math.PI/numSlices;
+    slices = [];
+
+    // Create slices with offset 0
+    for(let i=0;i<numSlices;i++){
+        slices.push({start:i*angle,end:(i+1)*angle,offset:0});
+    }
+
+    animateSeparation();
+    document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${numSlices}`;
 }
 
-function addCut(event){
-    const rect=canvas.getBoundingClientRect();
-    const x=(event.clientX||event.touches[0].clientX)-rect.left;
-    const y=(event.clientY||event.touches[0].clientY)-rect.top;
-    const index=getSliceIndex(x,y);
-    if(index===-1) return;
-    const slice=slices[index];
-    const clickAngle=Math.atan2(y-center.y,x-center.x);
-    const newSlices=[{start:slice.start,end:clickAngle},{start:clickAngle,end:slice.end}];
-    slices.splice(index,1,...newSlices);
-    drawCake();
-    document.getElementById('info').innerText=`Slices: ${slices.length} | Cuts: ${slices.length-1}`;
+// Animate slices moving apart
+function animateSeparation(){
+    let step=0;
+    const maxStep=20;
+
+    function animate(){
+        step++;
+        slices.forEach(slice=>{
+            slice.offset = (step/maxStep)*30; // maximum 30px separation
+        });
+        drawCake();
+        if(step<maxStep) requestAnimationFrame(animate);
+    }
+    animate();
 }
 
-// Hover highlight
-canvas.addEventListener('mousemove', e=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=e.clientX-rect.left;
-    const y=e.clientY-rect.top;
-    hoverSlice=getSliceIndex(x,y);
-    drawCake(hoverSlice);
-});
-
-// Reset
 function resetCake(){
-    slices=[{start:0,end:2*Math.PI}];
+    cutCount=0;
+    slices=[{start:0,end:2*Math.PI,offset:0}];
     drawCake();
-    document.getElementById('info').innerText='Slices: 1 | Cuts: 0';
+    document.getElementById('info').innerText='Slices cut: 0 | Pieces: 1';
 }
 
-// Save
-function saveCake(){
-    const link=document.createElement('a');
-    link.download='decorative_cake.png';
-    link.href=canvas.toDataURL();
-    link.click();
-}
-
-// Event listeners
-canvas.addEventListener('click',addCut);
-canvas.addEventListener('touchstart',function(e){e.preventDefault();addCut(e);},{passive:false});
+// Event
+canvas.addEventListener('click',cutCake);
 
 // Initial draw
 drawCake();
