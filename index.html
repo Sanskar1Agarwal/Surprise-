@@ -6,40 +6,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-    body {
-        margin: 0;
-        min-height: 100vh;
-        background: linear-gradient(#fff0f5, #ffe4ec);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-family: Arial, sans-serif;
-    }
-
-    .container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100%;
-        max-width: 600px;
-        padding: 20px;
-    }
-
-    h1 {
-        font-size: clamp(28px, 6vw, 48px);
-        color: #d6336c;
-        margin-bottom: 16px;
-        white-space: nowrap;
-        text-align: center;
-    }
-
-    canvas {
-        width: 100%;
-        max-width: 520px;
-        height: auto;
-        display: block;
-        cursor: pointer;
-    }
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(#fff0f5, #ffe4ec);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 600px;
+    width: 100%;
+    padding: 20px;
+}
+h1 {
+    font-size: clamp(28px, 6vw, 48px);
+    color: #d6336c;
+    margin-bottom: 16px;
+    white-space: nowrap;
+}
+canvas {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    cursor: pointer;
+}
 </style>
 </head>
 
@@ -58,47 +53,26 @@ const radius = 170;
 const cakeHeight = 90;
 const maxCuts = 6;
 
-let cuts = 0;
 let flameOn = true;
-let micStarted = false;
+let cuts = 0;
 
-// Cake slices
+// Cake slice data
 let slices = [{
     start: 0,
     end: Math.PI * 2,
-    offset: 0,
-    toppings: []
+    offset: 0
 }];
 
-function makeToppings(start, end) {
-    const arr = [];
-    const count = 14;
-    for (let i = 0; i < count; i++) {
-        const angle = start + (i / count) * (end - start);
-        arr.push({
-            angle,
-            r: radius * 0.6,
-            seedR: radius * 0.72
-        });
-    }
-    return arr;
-}
-slices[0].toppings = makeToppings(0, Math.PI * 2);
-
-// 🎂 Draw cake
+// 🎂 Draw everything
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const ordered = [...slices].sort(
-        (a, b) => Math.sin((a.start + a.end) / 2) - Math.sin((b.start + b.end) / 2)
-    );
-
-    ordered.forEach(slice => {
+    slices.forEach(slice => {
         const mid = (slice.start + slice.end) / 2;
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Chocolate sponge
+        // Sponge
         ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
@@ -106,15 +80,7 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Vanilla sponge
-        ctx.fillStyle = "#f5deb3";
-        ctx.beginPath();
-        ctx.moveTo(center.x + ox, center.y + oy + cakeHeight / 2);
-        ctx.arc(center.x + ox, center.y + oy + cakeHeight / 2, radius, slice.start, slice.end);
-        ctx.closePath();
-        ctx.fill();
-
-        // Strawberry cream
+        // Cream
         ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
@@ -123,22 +89,7 @@ function drawCake() {
         ctx.fill();
 
         ctx.strokeStyle = "#c9184a";
-        ctx.lineWidth = 2;
         ctx.stroke();
-
-        slice.toppings.forEach(t => {
-            ctx.fillStyle = "#ffd166";
-            ctx.beginPath();
-            ctx.arc(center.x + ox + t.seedR * Math.cos(t.angle),
-                    center.y + oy + t.seedR * Math.sin(t.angle), 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = "#d00000";
-            ctx.beginPath();
-            ctx.arc(center.x + ox + t.r * Math.cos(t.angle),
-                    center.y + oy + t.r * Math.sin(t.angle), 5, 0, Math.PI * 2);
-            ctx.fill();
-        });
     });
 
     drawCandle();
@@ -152,91 +103,74 @@ function drawCandle() {
     ctx.fillStyle = "#fff";
     ctx.fillRect(x - 6, y, 12, 35);
 
-    ctx.strokeStyle = "#000";
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y - 6);
-    ctx.stroke();
-
     if (flameOn) {
         ctx.fillStyle = "#ffb703";
         ctx.beginPath();
-        ctx.ellipse(x, y - 14, 6, 10, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y - 12, 6, 10, 0, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+// 🔥 Blow out (shared)
+function blowOutFlame() {
+    if (!flameOn) return;
+    flameOn = false;
+    drawCake();
+}
+
+// 🎤 Try microphone (best effort)
+async function tryMic() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+
+        const analyser = audioCtx.createAnalyser();
+        const mic = audioCtx.createMediaStreamSource(stream);
+        mic.connect(analyser);
+
+        const data = new Uint8Array(analyser.fftSize);
+
+        function listen() {
+            analyser.getByteTimeDomainData(data);
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+                const v = (data[i] - 128) / 128;
+                sum += v * v;
+            }
+            const rms = Math.sqrt(sum / data.length);
+
+            if (rms > 0.1) blowOutFlame();
+            if (flameOn) requestAnimationFrame(listen);
+        }
+        listen();
+    } catch {
+        // mic not supported — silent fallback
     }
 }
 
 // 🔪 Cut cake
 function cutCake() {
     if (cuts >= maxCuts) return;
-
     cuts++;
     const pieces = cuts + 1;
     const step = Math.PI * 2 / pieces;
     slices = [];
-
     for (let i = 0; i < pieces; i++) {
-        const start = i * step;
         slices.push({
-            start,
-            end: start + step,
-            offset: 0,
-            toppings: makeToppings(start, start + step)
+            start: i * step,
+            end: (i + 1) * step,
+            offset: 30
         });
     }
-    animateSplit();
+    drawCake();
 }
 
-function animateSplit() {
-    let t = 0;
-    function anim() {
-        t++;
-        slices.forEach(s => s.offset = Math.min(40, t * 2));
-        drawCake();
-        if (t < 20) requestAnimationFrame(anim);
-    }
-    anim();
-}
-
-// 🎤 MICROPHONE — FIXED METHOD
-async function startMic() {
-    if (micStarted) return;
-    micStarted = true;
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
-
-    const mic = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
-    mic.connect(analyser);
-
-    const data = new Uint8Array(analyser.fftSize);
-
-    function listen() {
-        analyser.getByteTimeDomainData(data);
-
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-            const v = (data[i] - 128) / 128;
-            sum += v * v;
-        }
-        const rms = Math.sqrt(sum / data.length);
-
-        if (rms > 0.08 && flameOn) { // breath threshold
-            flameOn = false;
-            drawCake();
-        }
-        requestAnimationFrame(listen);
-    }
-    listen();
-}
-
-// User interaction (required)
+// Interaction
 canvas.addEventListener("click", () => {
     cutCake();
-    startMic();
+    tryMic();
+    blowOutFlame(); // tap candle fallback
 });
 
 drawCake();
