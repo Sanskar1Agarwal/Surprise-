@@ -2,30 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<title>Happy Birthday 🎈</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Happy Birthday Cake 🎂</title>
 <style>
     body {
-        font-family: 'Arial', sans-serif;
-        text-align: center;
+        margin: 0;
         background: #fff8f0;
-        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
     }
     h1 {
-        color: #d2691e;
         font-size: 48px;
-        margin-bottom: 20px;
+        color: #d2691e;
+        margin-bottom: 10px;
+        white-space: nowrap; /* single line */
     }
     canvas {
-        border: none;
-        margin-top: 20px;
         cursor: pointer;
-        max-width: 90vw;
-    }
-    #info {
-        margin-top: 20px;
-        font-size: 20px;
-        color: #8b4513;
     }
 </style>
 </head>
@@ -33,147 +30,175 @@
 
 <h1>Happy Birthday 🎈</h1>
 <canvas id="cakeCanvas" width="500" height="500"></canvas>
-<div id="info">Slices cut: 0 | Pieces: 1 | Candle: 🔥</div>
 
 <script>
-const canvas = document.getElementById('cakeCanvas');
-const ctx = canvas.getContext('2d');
-const radius = canvas.width/2 - 40;
-const center = {x: canvas.width/2, y: canvas.height/2};
+const canvas = document.getElementById("cakeCanvas");
+const ctx = canvas.getContext("2d");
+
+const center = { x: 250, y: 270 };
+const radius = 160;
 const maxCuts = 6;
-let cutCount = 0;
-let slices = [{start:0,end:2*Math.PI,offset:0}];
+
+let cuts = 0;
 let candleLit = true;
 
-// Even sprinkle positions
-const sprinkleCount = 40;
-let sprinkles = [];
-for(let i=0;i<sprinkleCount;i++){
-    const angle = (i/sprinkleCount)*2*Math.PI;
-    const r = radius*0.6;
-    sprinkles.push({x:center.x+r*Math.cos(angle), y:center.y+r*Math.sin(angle), color: ['#FF0000','#00FF00','#FFFF00','#FFA500','#FF69B4'][i%5]});
+// Each slice has angle + offset
+let slices = [{
+    start: 0,
+    end: Math.PI * 2,
+    offset: 0,
+    sprinkles: []
+}];
+
+// Pre-generate evenly distributed sprinkles PER SLICE
+function generateSprinkles(start, end) {
+    const sprinkles = [];
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+        const angle = start + (i / count) * (end - start);
+        const r = radius * 0.6;
+        sprinkles.push({
+            angle,
+            r,
+            color: ["#ff4d4d", "#4dff4d", "#ffd84d", "#ff66cc"][i % 4]
+        });
+    }
+    return sprinkles;
 }
 
+slices[0].sprinkles = generateSprinkles(0, Math.PI * 2);
+
 // Draw cake
-function drawCake(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+function drawCake() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw cake slices
-    slices.forEach(slice=>{
-        const offsetX = slice.offset*Math.cos((slice.start+slice.end)/2);
-        const offsetY = slice.offset*Math.sin((slice.start+slice.end)/2);
+    slices.forEach(slice => {
+        const mid = (slice.start + slice.end) / 2;
+        const ox = slice.offset * Math.cos(mid);
+        const oy = slice.offset * Math.sin(mid);
 
-        const grad = ctx.createRadialGradient(center.x+offsetX, center.y+offsetY, radius*0.2, center.x+offsetX, center.y+offsetY, radius);
-        grad.addColorStop(0,'#fff5e6'); // icing
-        grad.addColorStop(0.3,'#FFDAB9'); // cake
-        grad.addColorStop(1,'#FFB07C');
+        // Cake + icing gradient
+        const grad = ctx.createRadialGradient(
+            center.x + ox, center.y + oy, radius * 0.2,
+            center.x + ox, center.y + oy, radius
+        );
+        grad.addColorStop(0, "#fff5ee");
+        grad.addColorStop(0.4, "#ffd1b3");
+        grad.addColorStop(1, "#f4a460");
 
         ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(center.x+offsetX, center.y+offsetY);
-        ctx.arc(center.x+offsetX, center.y+offsetY, radius, slice.start, slice.end);
+        ctx.moveTo(center.x + ox, center.y + oy);
+        ctx.arc(center.x + ox, center.y + oy, radius, slice.start, slice.end);
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle='#8B4513';
-        ctx.lineWidth=2;
+        ctx.strokeStyle = "#8b4513";
+        ctx.lineWidth = 2;
         ctx.stroke();
+
+        // Sprinkles move WITH slice
+        slice.sprinkles.forEach(s => {
+            const x = center.x + ox + s.r * Math.cos(s.angle);
+            const y = center.y + oy + s.r * Math.sin(s.angle);
+            ctx.fillStyle = s.color;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
     });
 
-    // Draw evenly placed sprinkles on top (stable)
-    sprinkles.forEach(s=>{
-        ctx.beginPath();
-        ctx.fillStyle=s.color;
-        ctx.arc(s.x,s.y,5,0,Math.PI*2);
-        ctx.fill();
-    });
+    drawCandle();
+}
 
-    // Draw candle on top
-    const candleX = center.x;
-    const candleY = center.y - radius - 20;
-    ctx.fillStyle='#FFFFFF';
-    ctx.fillRect(candleX-5,candleY,10,40); // candle stick
+// Candle
+function drawCandle() {
+    const x = center.x;
+    const y = center.y - radius - 30;
 
-    // Flame
-    if(candleLit){
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x - 5, y, 10, 35);
+
+    if (candleLit) {
+        ctx.fillStyle = "orange";
         ctx.beginPath();
-        ctx.fillStyle='orange';
-        ctx.arc(candleX,candleY,8,0,Math.PI*2);
+        ctx.arc(x, y - 5, 7, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
 // Cut cake into equal slices
-function cutCake(){
-    if(cutCount>=maxCuts) return;
-    cutCount++;
-    const numSlices = cutCount;
-    const angle = 2*Math.PI/numSlices;
+function cutCake() {
+    if (cuts >= maxCuts) return;
+
+    cuts++;
+    const n = cuts + 1;
+    const step = (Math.PI * 2) / n;
     slices = [];
-    for(let i=0;i<numSlices;i++){
-        slices.push({start:i*angle,end:(i+1)*angle,offset:0});
-    }
-    animateSeparation();
-    document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${numSlices} | Candle: ${candleLit?'🔥':'💨'}`;
-}
 
-// Animate slices moving apart
-function animateSeparation(){
-    let step=0;
-    const maxStep=20;
-    function animate(){
-        step++;
-        slices.forEach(slice=>{
-            slice.offset = (step/maxStep)*30;
+    for (let i = 0; i < n; i++) {
+        const start = i * step;
+        const end = start + step;
+        slices.push({
+            start,
+            end,
+            offset: 0,
+            sprinkles: generateSprinkles(start, end)
         });
+    }
+
+    animateSeparation();
+}
+
+// Slice separation animation
+function animateSeparation() {
+    let t = 0;
+    function anim() {
+        t++;
+        slices.forEach(s => s.offset = Math.min(35, t * 2));
         drawCake();
-        if(step<maxStep) requestAnimationFrame(animate);
+        if (t < 20) requestAnimationFrame(anim);
     }
-    animate();
+    anim();
 }
 
-// Reset cake
-function resetCake(){
-    cutCount=0;
-    slices=[{start:0,end:2*Math.PI,offset:0}];
-    candleLit = true;
-    drawCake();
-    document.getElementById('info')='Slices cut: 0 | Pieces: 1 | Candle: 🔥';
-}
+// 🎤 Microphone candle blowing (FIXED)
+async function enableMic() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioCtx = new AudioContext();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
 
-// Microphone blow detection
-async function setupMic(){
-    try{
-        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        source.connect(analyser);
-        analyser.fftSize = 256;
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const mic = audioCtx.createMediaStreamSource(stream);
+    mic.connect(analyser);
 
-        function detectBlow(){
-            analyser.getByteFrequencyData(dataArray);
-            const volume = dataArray.reduce((a,b)=>a+b)/dataArray.length;
-            if(volume>100 && candleLit){ // threshold for blow
-                candleLit=false;
-                drawCake();
-                document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${cutCount===0?1:cutCount} | Candle: 💨`;
-            }
-            requestAnimationFrame(detectBlow);
+    const data = new Uint8Array(analyser.fftSize);
+
+    function detectBlow() {
+        analyser.getByteTimeDomainData(data);
+
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
         }
-        detectBlow();
-    }catch(err){
-        console.log("Microphone access denied", err);
+        const volume = Math.sqrt(sum / data.length);
+
+        if (volume > 0.15 && candleLit) {
+            candleLit = false;
+            drawCake();
+        }
+        requestAnimationFrame(detectBlow);
     }
+    detectBlow();
 }
 
 // Events
-canvas.addEventListener('click',cutCake);
+canvas.addEventListener("click", cutCake);
 
-// Initialize
+// Init
 drawCake();
-setupMic();
+enableMic();
 </script>
 
 </body>
