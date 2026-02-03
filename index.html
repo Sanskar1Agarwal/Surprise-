@@ -20,16 +20,16 @@ body{
     flex-direction:column;
     align-items:center;
     width:100%;
-    max-width:600px;
 }
 .page.active{display:flex}
 h1{
     color:#d6336c;
     font-size:clamp(32px,7vw,56px);
     white-space:nowrap;
+    margin-bottom:20px;
 }
 button{
-    padding:14px 30px;
+    padding:14px 32px;
     font-size:18px;
     border:none;
     border-radius:30px;
@@ -47,11 +47,13 @@ canvas{
 
 <body>
 
+<!-- PAGE 1 -->
 <div id="page1" class="page active">
     <h1>Happy Birthday 🎈</h1>
-    <button onclick="start()">Start 🎂</button>
+    <button onclick="start()">Cut the Cake 🎂</button>
 </div>
 
+<!-- PAGE 2 -->
 <div id="page2" class="page">
     <canvas id="cake" width="520" height="520"></canvas>
 </div>
@@ -64,15 +66,35 @@ const center = { x:260, y:270 };
 const R = 160;
 const H = 70;
 
-let slices = [{a0:0, a1:Math.PI*2, pull:0}];
 let cuts = 0;
 const maxCuts = 6;
 
-/* ===== DRAW CUT FACE ===== */
-function drawCutFace(cx,cy,angle){
-    const x = cx + R*Math.cos(angle);
-    const y = cy + R*Math.sin(angle);
+/* ===== SPRINKLES ===== */
+function generateSprinkles(a0,a1,count=18){
+    const colors=["#ff4d6d","#ffd166","#4dabf7","#51cf66","#f783ac"];
+    const arr=[];
+    for(let i=0;i<count;i++){
+        arr.push({
+            angle:a0+Math.random()*(a1-a0),
+            radius:30+Math.random()*(R-50),
+            color:colors[Math.floor(Math.random()*colors.length)]
+        });
+    }
+    return arr;
+}
 
+/* ===== INITIAL SLICE ===== */
+let slices=[{
+    a0:0,
+    a1:Math.PI*2,
+    pull:0,
+    sprinkles:generateSprinkles(0,Math.PI*2,30)
+}];
+
+/* ===== CUT FACE ===== */
+function drawCutFace(cx,cy,angle){
+    const x=cx+R*Math.cos(angle);
+    const y=cy+R*Math.sin(angle);
     ctx.fillStyle="#a0522d";
     ctx.beginPath();
     ctx.moveTo(cx,cy);
@@ -85,59 +107,62 @@ function drawCutFace(cx,cy,angle){
 
 /* ===== DRAW SLICE ===== */
 function drawSlice(s){
-    const mid = (s.a0+s.a1)/2;
-    const dx = s.pull*Math.cos(mid);
-    const dy = s.pull*Math.sin(mid);
+    const mid=(s.a0+s.a1)/2;
+    const dx=s.pull*Math.cos(mid);
+    const dy=s.pull*Math.sin(mid);
+    const cx=center.x+dx;
+    const cy=center.y+dy;
 
-    const cx = center.x + dx;
-    const cy = center.y + dy;
-
-    /* Outer wall */
+    /* Sponge */
     ctx.fillStyle="#8b4513";
     ctx.beginPath();
-    ctx.arc(cx, cy+H, R, s.a0, s.a1);
-    ctx.arc(cx, cy, R, s.a1, s.a0, true);
+    ctx.arc(cx,cy+H,R,s.a0,s.a1);
+    ctx.arc(cx,cy,R,s.a1,s.a0,true);
     ctx.closePath();
     ctx.fill();
 
-    /* Inner faces */
     drawCutFace(cx,cy,s.a0);
     drawCutFace(cx,cy,s.a1);
 
-    /* Top */
+    /* Cream Top */
     ctx.fillStyle="#ff8fab";
     ctx.beginPath();
     ctx.moveTo(cx,cy);
     ctx.arc(cx,cy,R,s.a0,s.a1);
     ctx.closePath();
     ctx.fill();
+
+    /* Sprinkles */
+    s.sprinkles.forEach(sp=>{
+        const x=cx+sp.radius*Math.cos(sp.angle);
+        const y=cy+sp.radius*Math.sin(sp.angle);
+        ctx.fillStyle=sp.color;
+        ctx.beginPath();
+        ctx.ellipse(x,y,3,1.5,sp.angle,0,Math.PI*2);
+        ctx.fill();
+    });
 }
 
 /* ===== DRAW CAKE (DEPTH SORTED) ===== */
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // Sort slices by visual depth (Y position)
-    const sorted = [...slices].sort((a,b)=>{
-        const ay = Math.sin((a.a0+a.a1)/2);
-        const by = Math.sin((b.a0+b.a1)/2);
-        return ay - by;
-    });
-
-    sorted.forEach(drawSlice);
+    [...slices]
+        .sort((a,b)=>Math.sin((a.a0+a.a1)/2)-Math.sin((b.a0+b.a1)/2))
+        .forEach(drawSlice);
 }
 
-/* ===== CUT CAKE ===== */
-canvas.onclick = ()=>{
+/* ===== CUT ACTION ===== */
+canvas.onclick=()=>{
     if(cuts>=maxCuts) return;
     cuts++;
-    const step = Math.PI*2/(cuts+1);
+    const step=Math.PI*2/(cuts+1);
     slices=[];
     for(let i=0;i<cuts+1;i++){
         slices.push({
             a0:i*step,
             a1:(i+1)*step,
-            pull:35
+            pull:35,
+            sprinkles:generateSprinkles(i*step,(i+1)*step)
         });
     }
 };
@@ -149,11 +174,10 @@ function start(){
 }
 
 /* LOOP */
-function loop(){
+(function loop(){
     drawCake();
     requestAnimationFrame(loop);
-}
-loop();
+})();
 </script>
 
 </body>
