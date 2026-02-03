@@ -15,20 +15,42 @@ body {
     align-items: center;
     font-family: Arial, sans-serif;
 }
-.container {
-    display: flex;
+
+.page {
+    display: none;
     flex-direction: column;
     align-items: center;
-    max-width: 600px;
     width: 100%;
+    max-width: 600px;
     padding: 20px;
 }
-h1 {
-    font-size: clamp(28px, 6vw, 48px);
-    color: #d6336c;
-    margin-bottom: 16px;
-    white-space: nowrap;
+
+.page.active {
+    display: flex;
 }
+
+h1 {
+    font-size: clamp(32px, 7vw, 56px);
+    color: #d6336c;
+    margin-bottom: 20px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+button {
+    padding: 14px 28px;
+    font-size: 18px;
+    border: none;
+    border-radius: 30px;
+    background: #ff4d6d;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #e0315b;
+}
+
 canvas {
     width: 100%;
     max-width: 520px;
@@ -39,12 +61,27 @@ canvas {
 </head>
 
 <body>
-<div class="container">
+
+<!-- PAGE 1 -->
+<div id="page1" class="page active">
     <h1>Happy Birthday 🎈</h1>
+    <button onclick="goToCake()">Start 🎂</button>
+</div>
+
+<!-- PAGE 2 -->
+<div id="page2" class="page">
     <canvas id="cakeCanvas" width="520" height="520"></canvas>
 </div>
 
 <script>
+/* ================= PAGE SWITCH ================= */
+function goToCake() {
+    document.getElementById("page1").classList.remove("active");
+    document.getElementById("page2").classList.add("active");
+    startMic(); // mic starts ONLY after button click
+}
+
+/* ================= CANVAS SETUP ================= */
 const canvas = document.getElementById("cakeCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -53,17 +90,18 @@ const radius = 170;
 const cakeHeight = 90;
 const maxCuts = 6;
 
-let flameOn = true;
 let cuts = 0;
+let flameOn = true;
+let micStarted = false;
 
-// Cake slice data
+/* ================= CAKE DATA ================= */
 let slices = [{
     start: 0,
     end: Math.PI * 2,
     offset: 0
 }];
 
-// 🎂 Draw everything
+/* ================= DRAW ================= */
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -72,7 +110,7 @@ function drawCake() {
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Sponge
+        // Chocolate sponge
         ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
@@ -80,7 +118,7 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Cream
+        // Strawberry cream
         ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
@@ -89,13 +127,14 @@ function drawCake() {
         ctx.fill();
 
         ctx.strokeStyle = "#c9184a";
+        ctx.lineWidth = 2;
         ctx.stroke();
     });
 
     drawCandle();
 }
 
-// 🕯 Candle
+/* ================= CANDLE ================= */
 function drawCandle() {
     const x = center.x;
     const y = center.y - radius - 35;
@@ -111,21 +150,50 @@ function drawCandle() {
     }
 }
 
-// 🔥 Blow out (shared)
-function blowOutFlame() {
-    if (!flameOn) return;
-    flameOn = false;
-    drawCake();
+/* ================= CAKE CUTTING ================= */
+function cutCake() {
+    if (cuts >= maxCuts) return;
+
+    cuts++;
+    const pieces = cuts + 1;
+    const step = Math.PI * 2 / pieces;
+
+    slices = [];
+    for (let i = 0; i < pieces; i++) {
+        slices.push({
+            start: i * step,
+            end: (i + 1) * step,
+            offset: 0
+        });
+    }
+
+    animateSplit();
 }
 
-// 🎤 Try microphone (best effort)
-async function tryMic() {
+function animateSplit() {
+    let t = 0;
+    function anim() {
+        t++;
+        slices.forEach(s => s.offset = Math.min(40, t * 2));
+        drawCake();
+        if (t < 20) requestAnimationFrame(anim);
+    }
+    anim();
+}
+
+/* ================= MICROPHONE (ONLY WAY TO BLOW) ================= */
+async function startMic() {
+    if (micStarted) return;
+    micStarted = true;
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         await audioCtx.resume();
 
         const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+
         const mic = audioCtx.createMediaStreamSource(stream);
         mic.connect(analyser);
 
@@ -140,40 +208,24 @@ async function tryMic() {
             }
             const rms = Math.sqrt(sum / data.length);
 
-            if (rms > 0.1) blowOutFlame();
-            if (flameOn) requestAnimationFrame(listen);
+            if (rms > 0.1 && flameOn) {
+                flameOn = false;
+                drawCake();
+            }
+            requestAnimationFrame(listen);
         }
         listen();
-    } catch {
-        // mic not supported — silent fallback
+    } catch (e) {
+        console.warn("Microphone blocked or unavailable");
     }
 }
 
-// 🔪 Cut cake
-function cutCake() {
-    if (cuts >= maxCuts) return;
-    cuts++;
-    const pieces = cuts + 1;
-    const step = Math.PI * 2 / pieces;
-    slices = [];
-    for (let i = 0; i < pieces; i++) {
-        slices.push({
-            start: i * step,
-            end: (i + 1) * step,
-            offset: 30
-        });
-    }
-    drawCake();
-}
+/* ================= INTERACTION ================= */
+canvas.addEventListener("click", cutCake);
 
-// Interaction
-canvas.addEventListener("click", () => {
-    cutCake();
-    tryMic();
-    blowOutFlame(); // tap candle fallback
-});
-
+/* Init */
 drawCake();
 </script>
+
 </body>
 </html>
