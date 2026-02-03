@@ -7,18 +7,18 @@
 <style>
     body {
         margin: 0;
-        background: #fff8f0;
+        background: linear-gradient(#fff0f5, #ffe4ec);
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         height: 100vh;
         font-family: Arial, sans-serif;
     }
     h1 {
         font-size: 48px;
-        color: #d2691e;
-        margin-bottom: 10px;
+        color: #d6336c;
+        margin: 20px 0 10px 0;
         white-space: nowrap;
     }
     canvas {
@@ -35,70 +35,68 @@
 const canvas = document.getElementById("cakeCanvas");
 const ctx = canvas.getContext("2d");
 
-const center = { x: 260, y: 300 };
+const center = { x: 260, y: 260 };
 const radius = 170;
-const cakeHeight = 80;
+const cakeHeight = 90;
 const maxCuts = 6;
 
 let cuts = 0;
-let candleLit = true;
-let micStarted = false;
 
+// Initial slice
 let slices = [{
     start: 0,
     end: Math.PI * 2,
     offset: 0,
-    sprinkles: []
+    toppings: []
 }];
 
-// ---------- Sprinkles ----------
-function makeSprinkles(start, end) {
+// 🍓 Strawberry toppings per slice
+function makeToppings(start, end) {
     const arr = [];
-    const count = 10;
+    const count = 14;
     for (let i = 0; i < count; i++) {
         const angle = start + (i / count) * (end - start);
         arr.push({
             angle,
-            r: radius * 0.65,
-            color: ["#ff4d4d", "#ffd633", "#66ff66", "#ff66cc"][i % 4]
+            r: radius * 0.6,
+            seedR: radius * 0.72
         });
     }
     return arr;
 }
-slices[0].sprinkles = makeSprinkles(0, Math.PI * 2);
+slices[0].toppings = makeToppings(0, Math.PI * 2);
 
-// ---------- Draw Cake ----------
+// Draw cake
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Sort slices back → front to prevent overlap
-    const sortedSlices = [...slices].sort(
-        (a, b) => Math.sin((a.start + a.end)/2) - Math.sin((b.start + b.end)/2)
+    const ordered = [...slices].sort(
+        (a, b) => Math.sin((a.start + a.end) / 2) - Math.sin((b.start + b.end) / 2)
     );
 
-    sortedSlices.forEach(slice => {
+    ordered.forEach(slice => {
         const mid = (slice.start + slice.end) / 2;
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Bottom sponge
-        ctx.fillStyle = "#c68642";
+        // Bottom chocolate sponge
+        ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
         ctx.arc(center.x + ox, center.y + oy + cakeHeight, radius, slice.start, slice.end);
         ctx.closePath();
         ctx.fill();
 
-        // Middle sponge
-        ctx.fillStyle = "#e3a857";
+        // Middle vanilla sponge
+        ctx.fillStyle = "#f5deb3";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight / 2);
         ctx.arc(center.x + ox, center.y + oy + cakeHeight / 2, radius, slice.start, slice.end);
         ctx.closePath();
         ctx.fill();
 
-        // Cream top
-        ctx.fillStyle = "#fffaf0";
+        // Strawberry cream top
+        ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
         ctx.arc(center.x + ox, center.y + oy, radius, slice.start, slice.end);
@@ -106,112 +104,66 @@ function drawCake() {
         ctx.fill();
 
         // Outline
-        ctx.strokeStyle = "#8b4513";
+        ctx.strokeStyle = "#c9184a";
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Sprinkles (move with slice)
-        slice.sprinkles.forEach(s => {
-            const x = center.x + ox + s.r * Math.cos(s.angle);
-            const y = center.y + oy + s.r * Math.sin(s.angle);
-            ctx.fillStyle = s.color;
+        // Strawberry seeds
+        slice.toppings.forEach(t => {
+            const x = center.x + ox + t.seedR * Math.cos(t.angle);
+            const y = center.y + oy + t.seedR * Math.sin(t.angle);
+            ctx.fillStyle = "#ffd166";
             ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Strawberry pieces
+        slice.toppings.forEach(t => {
+            const x = center.x + ox + t.r * Math.cos(t.angle);
+            const y = center.y + oy + t.r * Math.sin(t.angle);
+            ctx.fillStyle = "#d00000";
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
             ctx.fill();
         });
     });
-
-    drawCandle();
 }
 
-// ---------- Candle ----------
-function drawCandle() {
-    const x = center.x;
-    const y = center.y - radius - 25;
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x - 6, y, 12, 40);
-
-    if (candleLit) {
-        ctx.fillStyle = "orange";
-        ctx.beginPath();
-        ctx.arc(x, y - 6, 8, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-// ---------- Cutting ----------
+// Cut cake
 function cutCake() {
     if (cuts >= maxCuts) return;
 
     cuts++;
-    const n = cuts + 1;
-    const step = Math.PI * 2 / n;
+    const pieces = cuts + 1;
+    const step = Math.PI * 2 / pieces;
     slices = [];
 
-    for (let i = 0; i < n; i++) {
-        const s = i * step;
+    for (let i = 0; i < pieces; i++) {
+        const start = i * step;
         slices.push({
-            start: s,
-            end: s + step,
+            start,
+            end: start + step,
             offset: 0,
-            sprinkles: makeSprinkles(s, s + step)
+            toppings: makeToppings(start, start + step)
         });
     }
     animateSplit();
 }
 
+// Animate slice separation
 function animateSplit() {
     let t = 0;
-    function frame() {
+    function anim() {
         t++;
         slices.forEach(s => s.offset = Math.min(40, t * 2));
         drawCake();
-        if (t < 20) requestAnimationFrame(frame);
+        if (t < 20) requestAnimationFrame(anim);
     }
-    frame();
+    anim();
 }
 
-// ---------- Microphone (WORKING) ----------
-async function startMic() {
-    if (micStarted) return;
-    micStarted = true;
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioCtx = new AudioContext();
-    await audioCtx.resume();
-
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 512;
-
-    const source = audioCtx.createMediaStreamSource(stream);
-    source.connect(analyser);
-
-    const data = new Uint8Array(analyser.fftSize);
-
-    function detectBlow() {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-            const v = (data[i] - 128) / 128;
-            sum += v * v;
-        }
-        const rms = Math.sqrt(sum / data.length);
-
-        if (rms > 0.18 && candleLit) {
-            candleLit = false;
-            drawCake();
-        }
-        requestAnimationFrame(detectBlow);
-    }
-    detectBlow();
-}
-
-// ---------- Events ----------
-canvas.addEventListener("click", () => {
-    startMic();   // required by browser
-    cutCake();
-});
+canvas.addEventListener("click", cutCake);
 
 // Init
 drawCake();
