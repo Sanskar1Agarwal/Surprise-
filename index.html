@@ -19,7 +19,7 @@
         font-size: 48px;
         color: #d2691e;
         margin-bottom: 10px;
-        white-space: nowrap; /* single line */
+        white-space: nowrap;
     }
     canvas {
         cursor: pointer;
@@ -29,20 +29,21 @@
 <body>
 
 <h1>Happy Birthday 🎈</h1>
-<canvas id="cakeCanvas" width="500" height="500"></canvas>
+<canvas id="cakeCanvas" width="520" height="520"></canvas>
 
 <script>
 const canvas = document.getElementById("cakeCanvas");
 const ctx = canvas.getContext("2d");
 
-const center = { x: 250, y: 270 };
-const radius = 160;
+const center = { x: 260, y: 300 };
+const radius = 170;
+const cakeHeight = 80;
 const maxCuts = 6;
 
 let cuts = 0;
 let candleLit = true;
+let micStarted = false;
 
-// Each slice has angle + offset
 let slices = [{
     start: 0,
     end: Math.PI * 2,
@@ -50,23 +51,22 @@ let slices = [{
     sprinkles: []
 }];
 
-// Pre-generate evenly distributed sprinkles PER SLICE
-function generateSprinkles(start, end) {
-    const sprinkles = [];
-    const count = 12;
+// Sprinkles per slice
+function makeSprinkles(start, end) {
+    const arr = [];
+    const count = 10;
     for (let i = 0; i < count; i++) {
-        const angle = start + (i / count) * (end - start);
-        const r = radius * 0.6;
-        sprinkles.push({
-            angle,
-            r,
-            color: ["#ff4d4d", "#4dff4d", "#ffd84d", "#ff66cc"][i % 4]
+        const a = start + (i / count) * (end - start);
+        arr.push({
+            angle: a,
+            r: radius * 0.65,
+            color: ["#ff4d4d", "#ffd633", "#66ff66", "#ff66cc"][i % 4]
         });
     }
-    return sprinkles;
+    return arr;
 }
 
-slices[0].sprinkles = generateSprinkles(0, Math.PI * 2);
+slices[0].sprinkles = makeSprinkles(0, Math.PI * 2);
 
 // Draw cake
 function drawCake() {
@@ -77,27 +77,36 @@ function drawCake() {
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Cake + icing gradient
-        const grad = ctx.createRadialGradient(
-            center.x + ox, center.y + oy, radius * 0.2,
-            center.x + ox, center.y + oy, radius
-        );
-        grad.addColorStop(0, "#fff5ee");
-        grad.addColorStop(0.4, "#ffd1b3");
-        grad.addColorStop(1, "#f4a460");
+        // Bottom sponge
+        ctx.fillStyle = "#c68642";
+        ctx.beginPath();
+        ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
+        ctx.arc(center.x + ox, center.y + oy + cakeHeight, radius, slice.start, slice.end);
+        ctx.closePath();
+        ctx.fill();
 
-        ctx.fillStyle = grad;
+        // Middle sponge
+        ctx.fillStyle = "#e3a857";
+        ctx.beginPath();
+        ctx.moveTo(center.x + ox, center.y + oy + cakeHeight / 2);
+        ctx.arc(center.x + ox, center.y + oy + cakeHeight / 2, radius, slice.start, slice.end);
+        ctx.closePath();
+        ctx.fill();
+
+        // Cream top
+        ctx.fillStyle = "#fffaf0";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
         ctx.arc(center.x + ox, center.y + oy, radius, slice.start, slice.end);
         ctx.closePath();
         ctx.fill();
 
+        // Outline
         ctx.strokeStyle = "#8b4513";
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Sprinkles move WITH slice
+        // Sprinkles move with slice
         slice.sprinkles.forEach(s => {
             const x = center.x + ox + s.r * Math.cos(s.angle);
             const y = center.y + oy + s.r * Math.sin(s.angle);
@@ -114,91 +123,95 @@ function drawCake() {
 // Candle
 function drawCandle() {
     const x = center.x;
-    const y = center.y - radius - 30;
+    const y = center.y - radius - 25;
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x - 5, y, 10, 35);
+    ctx.fillRect(x - 6, y, 12, 40);
 
     if (candleLit) {
         ctx.fillStyle = "orange";
         ctx.beginPath();
-        ctx.arc(x, y - 5, 7, 0, Math.PI * 2);
+        ctx.arc(x, y - 6, 8, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-// Cut cake into equal slices
+// Cut cake
 function cutCake() {
     if (cuts >= maxCuts) return;
 
     cuts++;
     const n = cuts + 1;
-    const step = (Math.PI * 2) / n;
+    const step = Math.PI * 2 / n;
     slices = [];
 
     for (let i = 0; i < n; i++) {
-        const start = i * step;
-        const end = start + step;
+        const s = i * step;
         slices.push({
-            start,
-            end,
+            start: s,
+            end: s + step,
             offset: 0,
-            sprinkles: generateSprinkles(start, end)
+            sprinkles: makeSprinkles(s, s + step)
         });
     }
-
-    animateSeparation();
+    animateSplit();
 }
 
-// Slice separation animation
-function animateSeparation() {
+// Animate slice separation
+function animateSplit() {
     let t = 0;
-    function anim() {
+    function frame() {
         t++;
-        slices.forEach(s => s.offset = Math.min(35, t * 2));
+        slices.forEach(s => s.offset = Math.min(40, t * 2));
         drawCake();
-        if (t < 20) requestAnimationFrame(anim);
+        if (t < 20) requestAnimationFrame(frame);
     }
-    anim();
+    frame();
 }
 
-// 🎤 Microphone candle blowing (FIXED)
-async function enableMic() {
+// 🎤 Candle blow detection (WORKING)
+async function startMic() {
+    if (micStarted) return;
+    micStarted = true;
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const audioCtx = new AudioContext();
+    await audioCtx.resume();
+
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
 
-    const mic = audioCtx.createMediaStreamSource(stream);
-    mic.connect(analyser);
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
 
     const data = new Uint8Array(analyser.fftSize);
 
-    function detectBlow() {
+    function detect() {
         analyser.getByteTimeDomainData(data);
-
         let sum = 0;
         for (let i = 0; i < data.length; i++) {
             const v = (data[i] - 128) / 128;
             sum += v * v;
         }
-        const volume = Math.sqrt(sum / data.length);
+        const rms = Math.sqrt(sum / data.length);
 
-        if (volume > 0.15 && candleLit) {
+        if (rms > 0.18 && candleLit) {
             candleLit = false;
             drawCake();
         }
-        requestAnimationFrame(detectBlow);
+        requestAnimationFrame(detect);
     }
-    detectBlow();
+    detect();
 }
 
-// Events
-canvas.addEventListener("click", cutCake);
+// User interaction
+canvas.addEventListener("click", () => {
+    startMic();   // required for mic permission
+    cutCake();
+});
 
 // Init
 drawCake();
-enableMic();
 </script>
 
 </body>
