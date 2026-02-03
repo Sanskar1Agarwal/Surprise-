@@ -60,20 +60,18 @@ canvas{
 
 <body>
 
-<!-- PAGE 1 -->
 <div id="page1" class="page active">
     <h1>Happy Birthday 🎈</h1>
     <button id="startBtn">Start 🎂</button>
 </div>
 
-<!-- PAGE 2 -->
 <div id="page2" class="page">
     <div id="micBar"><div id="micLevel"></div></div>
     <canvas id="cake" width="520" height="520"></canvas>
 </div>
 
 <script>
-/* ================= PAGE SWITCH ================= */
+/* PAGE SWITCH */
 const startBtn=document.getElementById("startBtn");
 const page1=document.getElementById("page1");
 const page2=document.getElementById("page2");
@@ -84,7 +82,7 @@ startBtn.onclick=async()=>{
     await startMic();
 };
 
-/* ================= CANVAS ================= */
+/* CANVAS */
 const canvas=document.getElementById("cake");
 const ctx=canvas.getContext("2d");
 
@@ -100,7 +98,7 @@ const maxCuts=6;
 
 let slices=[{start:0,end:Math.PI*2,offset:0}];
 
-/* ================= DRAW ================= */
+/* DRAW */
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -109,7 +107,6 @@ function drawCake(){
         const ox=s.offset*Math.cos(mid);
         const oy=s.offset*Math.sin(mid);
 
-        /* Sponge */
         ctx.fillStyle="#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x+ox,center.y+oy+cakeHeight);
@@ -117,7 +114,6 @@ function drawCake(){
         ctx.closePath();
         ctx.fill();
 
-        /* Cream */
         ctx.fillStyle="#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x+ox,center.y+oy);
@@ -132,7 +128,6 @@ function drawCake(){
     drawCandle();
 }
 
-/* ================= CANDLE ================= */
 function drawCandle(){
     const x=center.x;
     const y=center.y-topRadius-35;
@@ -148,7 +143,6 @@ function drawCandle(){
 
     ctx.save();
     ctx.translate(x+sway,y-14+lift);
-
     ctx.fillStyle="rgba(255,183,3,0.5)";
     ctx.beginPath();
     ctx.ellipse(0,0,10,16,0,0,Math.PI*2);
@@ -158,27 +152,21 @@ function drawCandle(){
     ctx.beginPath();
     ctx.ellipse(0,0,6,12,0,0,Math.PI*2);
     ctx.fill();
-
     ctx.restore();
 }
 
-/* ================= CUT CAKE ================= */
+/* CUT CAKE */
 canvas.onclick=()=>{
     if(cuts>=maxCuts) return;
     cuts++;
-    const pieces=cuts+1;
-    const step=Math.PI*2/pieces;
+    const step=Math.PI*2/(cuts+1);
     slices=[];
-    for(let i=0;i<pieces;i++){
-        slices.push({
-            start:i*step,
-            end:(i+1)*step,
-            offset:35
-        });
+    for(let i=0;i<cuts+1;i++){
+        slices.push({start:i*step,end:(i+1)*step,offset:35});
     }
 };
 
-/* ================= MICROPHONE (FIXED) ================= */
+/* MICROPHONE — FREQUENCY BASED (WORKS) */
 async function startMic(){
     const bar=document.getElementById("micLevel");
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -186,31 +174,28 @@ async function startMic(){
     await audioCtx.resume();
 
     const analyser=audioCtx.createAnalyser();
-    analyser.fftSize=2048;
+    analyser.fftSize=1024;
 
     const mic=audioCtx.createMediaStreamSource(stream);
     mic.connect(analyser);
 
-    const data=new Uint8Array(analyser.fftSize);
-    let smooth=0;
+    const freq=new Uint8Array(analyser.frequencyBinCount);
     let sustain=0;
 
     function listen(){
-        analyser.getByteTimeDomainData(data);
-        let sum=0;
-        for(let i=0;i<data.length;i++){
-            const v=(data[i]-128)/128;
-            sum+=v*v;
-        }
-        const rms=Math.sqrt(sum/data.length);
+        analyser.getByteFrequencyData(freq);
 
-        smooth=smooth*0.8+rms*0.2;
-        bar.style.width=Math.min(100,smooth*600)+"%";
+        // Focus on low frequencies (voice/breath sound)
+        let energy=0;
+        for(let i=2;i<20;i++) energy+=freq[i];
+        energy/=18;
 
-        if(smooth>0.015) sustain++;
+        bar.style.width=Math.min(100,energy*1.5)+"%";
+
+        if(energy>25) sustain++;
         else sustain=0;
 
-        if(sustain>30 && flameOn){
+        if(sustain>20 && flameOn){
             flameOn=false;
         }
         requestAnimationFrame(listen);
@@ -218,7 +203,7 @@ async function startMic(){
     listen();
 }
 
-/* ================= LOOP ================= */
+/* LOOP */
 function animate(){
     drawCake();
     requestAnimationFrame(animate);
