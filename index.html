@@ -8,12 +8,20 @@
     body {
         margin: 0;
         background: linear-gradient(#fff0f5, #ffe4ec);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+    }
+
+    /* Centered wrapper */
+    .container {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
-        font-family: Arial, sans-serif;
+        width: 100%;
     }
 
     h1 {
@@ -21,18 +29,23 @@
         color: #d6336c;
         margin-bottom: 15px;
         white-space: nowrap;
+        text-align: center;
     }
 
     canvas {
-        display: block;
+        width: min(90vw, 520px);   /* responsive */
+        height: auto;
         cursor: pointer;
+        display: block;
     }
 </style>
 </head>
 <body>
 
-<h1>Happy Birthday 🎈</h1>
-<canvas id="cakeCanvas" width="520" height="520"></canvas>
+<div class="container">
+    <h1>Happy Birthday 🎈</h1>
+    <canvas id="cakeCanvas" width="520" height="520"></canvas>
+</div>
 
 <script>
 const canvas = document.getElementById("cakeCanvas");
@@ -53,7 +66,7 @@ let slices = [{
     toppings: []
 }];
 
-// 🍓 Strawberry toppings per slice
+// 🍓 Strawberry toppings
 function makeToppings(start, end) {
     const arr = [];
     const count = 14;
@@ -73,7 +86,7 @@ slices[0].toppings = makeToppings(0, Math.PI * 2);
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Sort slices to prevent overlap
+    // Draw back slices first (no overlap)
     const ordered = [...slices].sort(
         (a, b) => Math.sin((a.start + a.end) / 2) - Math.sin((b.start + b.end) / 2)
     );
@@ -112,7 +125,7 @@ function drawCake() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Strawberry seeds
+        // Seeds
         slice.toppings.forEach(t => {
             const x = center.x + ox + t.seedR * Math.cos(t.angle);
             const y = center.y + oy + t.seedR * Math.sin(t.angle);
@@ -122,7 +135,7 @@ function drawCake() {
             ctx.fill();
         });
 
-        // Strawberry pieces
+        // Strawberry bits
         slice.toppings.forEach(t => {
             const x = center.x + ox + t.r * Math.cos(t.angle);
             const y = center.y + oy + t.r * Math.sin(t.angle);
@@ -134,7 +147,7 @@ function drawCake() {
     });
 }
 
-// Cut cake into equal slices
+// Cut cake
 function cutCake() {
     if (cuts >= maxCuts) return;
 
