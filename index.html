@@ -1,140 +1,108 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Happy Birthday 🎂</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>Interactive Cake Cutting</title>
 <style>
-body{
-  margin:0;
-  font-family:'Segoe UI',sans-serif;
-  background:#0f0f1a;
-  color:white;
-  text-align:center;
-  overflow:hidden;
-}
-
-h1{
-  margin-top:20px;
-  font-size:2.4em;
-}
-
-p{opacity:.85}
-
-/* ===== CAKE AREA ===== */
-#cakeArea{
-  position:relative;
-  width:300px;
-  height:420px;
-  margin:30px auto;
-}
-
-/* base cake */
-.cake{
-  position:absolute;
-  inset:0;
-  background:url("cake.png") center/cover no-repeat;
-  border-radius:14px;
-}
-
-/* slices */
-.slice{
-  position:absolute;
-  inset:0;
-  background:url("cake.png") center/cover no-repeat;
-  transition:1s ease;
-}
-
-/* 6 slices */
-.s1{clip-path:polygon(50% 50%, 100% 0, 100% 50%);}
-.s2{clip-path:polygon(50% 50%, 100% 50%, 100% 100%);}
-.s3{clip-path:polygon(50% 50%, 50% 100%, 0 100%);}
-.s4{clip-path:polygon(50% 50%, 0 100%, 0 50%);}
-.s5{clip-path:polygon(50% 50%, 0 50%, 0 0);}
-.s6{clip-path:polygon(50% 50%, 0 0, 100% 0);}
-
-/* knife */
-#knife{
-  font-size:42px;
-  cursor:pointer;
-  margin-top:10px;
-}
-
-/* fireworks */
-.firework{
-  position:absolute;
-  width:6px;
-  height:6px;
-  border-radius:50%;
-  animation:explode 1.2s forwards;
-}
-
-@keyframes explode{
-  from{transform:scale(1);opacity:1;}
-  to{transform:scale(6);opacity:0;}
-}
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #fff8f0;
+        padding: 30px;
+    }
+    h1 {
+        color: #d2691e;
+    }
+    canvas {
+        border: 2px solid #d2691e;
+        border-radius: 50%;
+        margin-top: 20px;
+        cursor: pointer;
+        max-width: 90vw;
+    }
+    #info {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #8b4513;
+    }
 </style>
 </head>
-
 <body>
 
-<h1>🎉 Happy Birthday Muskan 🎉</h1>
-<p id="hint">Tap the knife to cut the cake 🎂</p>
-
-<div id="cakeArea">
-  <div class="cake" id="baseCake"></div>
-
-  <div class="slice s1"></div>
-  <div class="slice s2"></div>
-  <div class="slice s3"></div>
-  <div class="slice s4"></div>
-  <div class="slice s5"></div>
-  <div class="slice s6"></div>
-</div>
-
-<div id="knife">🔪 Cut</div>
+<h1>Interactive Cake Cutting 🎂</h1>
+<p>Click on the cake to make a cut and see the slices!</p>
+<canvas id="cakeCanvas" width="400" height="400"></canvas>
+<div id="info">Number of cuts: 0 | Pieces: 1</div>
 
 <script>
-const slices = document.querySelectorAll(".slice");
-let index = 0;
+const canvas = document.getElementById('cakeCanvas');
+const ctx = canvas.getContext('2d');
+const radius = canvas.width / 2 - 10;
+const center = { x: canvas.width / 2, y: canvas.height / 2 };
+let cuts = []; // store angles of cuts
+let colors = ['#FF9999','#FFCC99','#99CCFF','#CCFF99','#FFB6C1','#FFA07A','#87CEFA','#90EE90','#FFD700','#FF69B4'];
 
-const directions = [
-  {x:120,y:-40},
-  {x:120,y:60},
-  {x:0,y:120},
-  {x:-120,y:60},
-  {x:-120,y:-40},
-  {x:0,y:-120}
-];
+// Draw the cake slices
+function drawCake() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-knife.onclick = () => {
-  if(index >= slices.length) return;
+    // Sort cuts so slices are drawn in order
+    const sortedCuts = cuts.slice().sort((a,b) => a-b);
+    const totalCuts = sortedCuts.length;
 
-  slices[index].style.transform =
-    `translate(${directions[index].x}px, ${directions[index].y}px) rotate(${Math.random()*30}deg)`;
+    // Draw slices
+    if (totalCuts === 0) {
+        ctx.fillStyle = '#FFCC99';
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        for (let i = 0; i <= totalCuts; i++) {
+            const start = i === 0 ? 0 : sortedCuts[i-1];
+            const end = i === totalCuts ? Math.PI * 2 : sortedCuts[i];
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.arc(center.x, center.y, radius, start, end);
+            ctx.closePath();
+            ctx.fill();
+        }
 
-  index++;
-
-  if(index === slices.length){
-    baseCake.style.opacity = 0;
-    fireworks();
-  }
-};
-
-/* FIREWORKS */
-function fireworks(){
-  setInterval(()=>{
-    const f=document.createElement("div");
-    f.className="firework";
-    f.style.left=Math.random()*100+"vw";
-    f.style.top=Math.random()*60+"vh";
-    f.style.background=`hsl(${Math.random()*360},100%,50%)`;
-    document.body.appendChild(f);
-    setTimeout(()=>f.remove(),1200);
-  },220);
+        // Draw cut lines
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 2;
+        sortedCuts.forEach(angle => {
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle));
+            ctx.stroke();
+        });
+    }
 }
+
+// Add a cut
+function addCut(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left - center.x;
+    const y = event.clientY - rect.top - center.y;
+    const angle = Math.atan2(y, x);
+    cuts.push(angle);
+
+    drawCake();
+
+    const pieces = cuts.length * (cuts.length + 1) / 2 + 1;
+    document.getElementById('info').innerText = `Number of cuts: ${cuts.length} | Pieces: ${pieces}`;
+}
+
+// Initial draw
+drawCake();
+canvas.addEventListener('click', addCut);
+canvas.addEventListener('touchstart', function(e){
+    e.preventDefault();
+    const touch = e.touches[0];
+    addCut({clientX: touch.clientX, clientY: touch.clientY});
+}, {passive: false});
 </script>
 
 </body>
