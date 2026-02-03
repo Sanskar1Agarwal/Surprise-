@@ -4,44 +4,47 @@
 <meta charset="UTF-8">
 <title>Happy Birthday 🎈</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
     body {
         margin: 0;
+        min-height: 100vh;
         background: linear-gradient(#fff0f5, #ffe4ec);
-        height: 100vh;
         display: flex;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         font-family: Arial, sans-serif;
     }
 
-    /* Centered wrapper */
     .container {
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
         width: 100%;
+        max-width: 600px;
+        padding: 20px;
+        box-sizing: border-box;
     }
 
     h1 {
-        font-size: 48px;
+        font-size: clamp(28px, 6vw, 48px);
         color: #d6336c;
-        margin-bottom: 15px;
+        margin-bottom: 16px;
         white-space: nowrap;
         text-align: center;
     }
 
     canvas {
-        width: min(90vw, 520px);   /* responsive */
+        width: 100%;
+        max-width: 520px;
         height: auto;
-        cursor: pointer;
         display: block;
+        cursor: pointer;
     }
 </style>
 </head>
-<body>
 
+<body>
 <div class="container">
     <h1>Happy Birthday 🎈</h1>
     <canvas id="cakeCanvas" width="520" height="520"></canvas>
@@ -57,8 +60,10 @@ const cakeHeight = 90;
 const maxCuts = 6;
 
 let cuts = 0;
+let flameOn = true;
+let micStarted = false;
 
-// Initial slice
+// Cake slices
 let slices = [{
     start: 0,
     end: Math.PI * 2,
@@ -66,7 +71,6 @@ let slices = [{
     toppings: []
 }];
 
-// 🍓 Strawberry toppings
 function makeToppings(start, end) {
     const arr = [];
     const count = 14;
@@ -82,11 +86,9 @@ function makeToppings(start, end) {
 }
 slices[0].toppings = makeToppings(0, Math.PI * 2);
 
-// Draw cake
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw back slices first (no overlap)
     const ordered = [...slices].sort(
         (a, b) => Math.sin((a.start + a.end) / 2) - Math.sin((b.start + b.end) / 2)
     );
@@ -96,7 +98,7 @@ function drawCake() {
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
 
-        // Bottom chocolate sponge
+        // Chocolate sponge
         ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
@@ -104,7 +106,7 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Middle vanilla sponge
+        // Vanilla sponge
         ctx.fillStyle = "#f5deb3";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight / 2);
@@ -112,7 +114,7 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Strawberry cream top
+        // Strawberry cream
         ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
@@ -120,40 +122,67 @@ function drawCake() {
         ctx.closePath();
         ctx.fill();
 
-        // Outline
         ctx.strokeStyle = "#c9184a";
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Seeds
+        // Seeds & strawberries
         slice.toppings.forEach(t => {
-            const x = center.x + ox + t.seedR * Math.cos(t.angle);
-            const y = center.y + oy + t.seedR * Math.sin(t.angle);
             ctx.fillStyle = "#ffd166";
             ctx.beginPath();
-            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.arc(
+                center.x + ox + t.seedR * Math.cos(t.angle),
+                center.y + oy + t.seedR * Math.sin(t.angle),
+                2, 0, Math.PI * 2
+            );
             ctx.fill();
-        });
 
-        // Strawberry bits
-        slice.toppings.forEach(t => {
-            const x = center.x + ox + t.r * Math.cos(t.angle);
-            const y = center.y + oy + t.r * Math.sin(t.angle);
             ctx.fillStyle = "#d00000";
             ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.arc(
+                center.x + ox + t.r * Math.cos(t.angle),
+                center.y + oy + t.r * Math.sin(t.angle),
+                5, 0, Math.PI * 2
+            );
             ctx.fill();
         });
     });
+
+    drawCandle();
 }
 
-// Cut cake
+// 🎂 Candle
+function drawCandle() {
+    const x = center.x;
+    const y = center.y - radius - 35;
+
+    // Candle body
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x - 6, y, 12, 35);
+
+    // Wick
+    ctx.strokeStyle = "#000";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y - 6);
+    ctx.stroke();
+
+    // Flame
+    if (flameOn) {
+        ctx.fillStyle = "#ffb703";
+        ctx.beginPath();
+        ctx.ellipse(x, y - 14, 6, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// Cake cutting
 function cutCake() {
     if (cuts >= maxCuts) return;
 
     cuts++;
     const pieces = cuts + 1;
-    const step = (Math.PI * 2) / pieces;
+    const step = Math.PI * 2 / pieces;
     slices = [];
 
     for (let i = 0; i < pieces; i++) {
@@ -168,7 +197,6 @@ function cutCake() {
     animateSplit();
 }
 
-// Animate slice separation
 function animateSplit() {
     let t = 0;
     function anim() {
@@ -180,11 +208,39 @@ function animateSplit() {
     anim();
 }
 
-canvas.addEventListener("click", cutCake);
+// 🎤 Microphone candle blow
+async function startMic() {
+    if (micStarted) return;
+    micStarted = true;
 
-// Init
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioCtx = new AudioContext();
+    const mic = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    mic.connect(analyser);
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+
+    function listen() {
+        analyser.getByteFrequencyData(data);
+        const volume = data.reduce((a, b) => a + b) / data.length;
+
+        if (volume > 45 && flameOn) {
+            flameOn = false;
+            drawCake();
+        }
+        requestAnimationFrame(listen);
+    }
+    listen();
+}
+
+canvas.addEventListener("click", () => {
+    cutCake();
+    startMic(); // mic starts on first interaction
+});
+
 drawCake();
 </script>
-
 </body>
 </html>
