@@ -6,66 +6,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-    margin: 0;
-    min-height: 100vh;
-    background: linear-gradient(#fff0f5, #ffe4ec);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: Arial, sans-serif;
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(#fff0f5,#ffe4ec);
+    font-family:Arial,sans-serif;
 }
-
-.page {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 600px;
-    padding: 20px;
+.page{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    width:100%;
+    max-width:600px;
 }
-
-.page.active {
-    display: flex;
+.page.active{display:flex}
+h1{
+    color:#d6336c;
+    font-size:clamp(32px,7vw,56px);
+    white-space:nowrap;
 }
-
-h1 {
-    font-size: clamp(32px, 7vw, 56px);
-    color: #d6336c;
-    margin-bottom: 16px;
-    white-space: nowrap;
+button{
+    padding:14px 30px;
+    font-size:18px;
+    border:none;
+    border-radius:30px;
+    background:#ff4d6d;
+    color:#fff;
+    cursor:pointer;
 }
-
-button {
-    padding: 14px 30px;
-    font-size: 18px;
-    border: none;
-    border-radius: 30px;
-    background: #ff4d6d;
-    color: white;
-    cursor: pointer;
+#micBar{
+    width:220px;
+    height:10px;
+    background:#ffd6e0;
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:12px;
 }
-
-#micBar {
-    width: 200px;
-    height: 10px;
-    border-radius: 10px;
-    background: #ffd6e0;
-    margin-bottom: 10px;
-    overflow: hidden;
+#micLevel{
+    height:100%;
+    width:0%;
+    background:#ff4d6d;
 }
-
-#micLevel {
-    height: 100%;
-    width: 0%;
-    background: #ff4d6d;
-    transition: width 0.1s linear;
-}
-
-canvas {
-    width: 100%;
-    max-width: 520px;
-    height: auto;
+canvas{
+    width:100%;
+    max-width:520px;
+    height:auto;
 }
 </style>
 </head>
@@ -81,158 +69,157 @@ canvas {
 <!-- PAGE 2 -->
 <div id="page2" class="page">
     <div id="micBar"><div id="micLevel"></div></div>
-    <canvas id="cakeCanvas" width="520" height="520"></canvas>
+    <canvas id="cake" width="520" height="520"></canvas>
 </div>
 
 <script>
-const startBtn = document.getElementById("startBtn");
-const page1 = document.getElementById("page1");
-const page2 = document.getElementById("page2");
+/* ================= PAGE SWITCH ================= */
+const startBtn=document.getElementById("startBtn");
+const page1=document.getElementById("page1");
+const page2=document.getElementById("page2");
 
-startBtn.addEventListener("click", async () => {
+startBtn.onclick=async()=>{
     page1.classList.remove("active");
     page2.classList.add("active");
     await startMic();
-});
+};
 
-/* ===== Canvas ===== */
-const canvas = document.getElementById("cakeCanvas");
-const ctx = canvas.getContext("2d");
+/* ================= CANVAS ================= */
+const canvas=document.getElementById("cake");
+const ctx=canvas.getContext("2d");
 
-let center = { x: canvas.width / 2, y: canvas.height / 2 };
-const radius = 170;
-const cakeHeight = 90;
-const maxCuts = 6;
+const center={x:canvas.width/2,y:canvas.height/2};
+const topRadius=170;
+const spongeRadius=160;
+const cakeHeight=70;
 
-let flameOn = true;
-let cuts = 0;
+let flameOn=true;
+let flameT=0;
+let cuts=0;
+const maxCuts=6;
 
-/* Floating flame variables */
-let flameTime = 0;
+let slices=[{start:0,end:Math.PI*2,offset:0}];
 
-/* ===== Cake slices ===== */
-let slices = [{ start: 0, end: Math.PI * 2, offset: 0 }];
+/* ================= DRAW ================= */
+function drawCake(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-/* ===== Draw ===== */
-function drawCake() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    slices.forEach(s=>{
+        const mid=(s.start+s.end)/2;
+        const ox=s.offset*Math.cos(mid);
+        const oy=s.offset*Math.sin(mid);
 
-    slices.forEach(s => {
-        const mid = (s.start + s.end) / 2;
-        const ox = s.offset * Math.cos(mid);
-        const oy = s.offset * Math.sin(mid);
-
-        // Sponge
-        ctx.fillStyle = "#8b4513";
+        /* Sponge */
+        ctx.fillStyle="#8b4513";
         ctx.beginPath();
-        ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
-        ctx.arc(center.x + ox, center.y + oy + cakeHeight, radius, s.start, s.end);
+        ctx.moveTo(center.x+ox,center.y+oy+cakeHeight);
+        ctx.arc(center.x+ox,center.y+oy+cakeHeight,spongeRadius,s.start,s.end);
         ctx.closePath();
         ctx.fill();
 
-        // Cream
-        ctx.fillStyle = "#ff8fab";
+        /* Cream */
+        ctx.fillStyle="#ff8fab";
         ctx.beginPath();
-        ctx.moveTo(center.x + ox, center.y + oy);
-        ctx.arc(center.x + ox, center.y + oy, radius, s.start, s.end);
+        ctx.moveTo(center.x+ox,center.y+oy);
+        ctx.arc(center.x+ox,center.y+oy,topRadius,s.start,s.end);
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = "#c9184a";
+        ctx.strokeStyle="#c9184a";
         ctx.stroke();
     });
 
     drawCandle();
 }
 
-/* ===== Candle with FLOATING FLAME ===== */
-function drawCandle() {
-    const x = center.x;
-    const y = center.y - radius - 35;
+/* ================= CANDLE ================= */
+function drawCandle(){
+    const x=center.x;
+    const y=center.y-topRadius-35;
 
-    // Candle body
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x - 6, y, 12, 35);
+    ctx.fillStyle="#fff";
+    ctx.fillRect(x-6,y,12,35);
 
-    if (!flameOn) return;
+    if(!flameOn) return;
 
-    flameTime += 0.05;
-
-    const floatY = Math.sin(flameTime) * 3;
-    const swayX = Math.cos(flameTime * 1.3) * 2;
-    const scale = 1 + Math.sin(flameTime * 2) * 0.08;
+    flameT+=0.05;
+    const sway=Math.sin(flameT)*2;
+    const lift=Math.cos(flameT*1.3)*3;
 
     ctx.save();
-    ctx.translate(x + swayX, y - 12 + floatY);
-    ctx.scale(scale, scale);
+    ctx.translate(x+sway,y-14+lift);
 
-    // Outer glow
-    ctx.fillStyle = "rgba(255, 183, 3, 0.5)";
+    ctx.fillStyle="rgba(255,183,3,0.5)";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 10, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(0,0,10,16,0,0,Math.PI*2);
     ctx.fill();
 
-    // Inner flame
-    ctx.fillStyle = "#ffb703";
+    ctx.fillStyle="#ffb703";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 6, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(0,0,6,12,0,0,Math.PI*2);
     ctx.fill();
 
     ctx.restore();
 }
 
-/* ===== Cake cutting ===== */
-canvas.addEventListener("click", () => {
-    if (cuts >= maxCuts) return;
+/* ================= CUT CAKE ================= */
+canvas.onclick=()=>{
+    if(cuts>=maxCuts) return;
     cuts++;
-    const pieces = cuts + 1;
-    const step = Math.PI * 2 / pieces;
-    slices = [];
-    for (let i = 0; i < pieces; i++) {
-        slices.push({ start: i * step, end: (i + 1) * step, offset: 40 });
+    const pieces=cuts+1;
+    const step=Math.PI*2/pieces;
+    slices=[];
+    for(let i=0;i<pieces;i++){
+        slices.push({
+            start:i*step,
+            end:(i+1)*step,
+            offset:35
+        });
     }
-});
+};
 
-/* ===== MICROPHONE ===== */
-async function startMic() {
-    const levelBar = document.getElementById("micLevel");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+/* ================= MICROPHONE (FIXED) ================= */
+async function startMic(){
+    const bar=document.getElementById("micLevel");
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     await audioCtx.resume();
 
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
+    const analyser=audioCtx.createAnalyser();
+    analyser.fftSize=2048;
 
-    const mic = audioCtx.createMediaStreamSource(stream);
+    const mic=audioCtx.createMediaStreamSource(stream);
     mic.connect(analyser);
 
-    const data = new Uint8Array(analyser.fftSize);
-    let sustained = 0;
+    const data=new Uint8Array(analyser.fftSize);
+    let smooth=0;
+    let sustain=0;
 
-    function listen() {
+    function listen(){
         analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-            const v = (data[i] - 128) / 128;
-            sum += v * v;
+        let sum=0;
+        for(let i=0;i<data.length;i++){
+            const v=(data[i]-128)/128;
+            sum+=v*v;
         }
-        const rms = Math.sqrt(sum / data.length);
+        const rms=Math.sqrt(sum/data.length);
 
-        levelBar.style.width = Math.min(100, rms * 400) + "%";
+        smooth=smooth*0.8+rms*0.2;
+        bar.style.width=Math.min(100,smooth*600)+"%";
 
-        if (rms > 0.02) sustained++;
-        else sustained = 0;
+        if(smooth>0.015) sustain++;
+        else sustain=0;
 
-        if (sustained > 20 && flameOn) {
-            flameOn = false;
+        if(sustain>30 && flameOn){
+            flameOn=false;
         }
         requestAnimationFrame(listen);
     }
     listen();
 }
 
-/* ===== Animation Loop ===== */
-function animate() {
+/* ================= LOOP ================= */
+function animate(){
     drawCake();
     requestAnimationFrame(animate);
 }
