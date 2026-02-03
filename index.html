@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive Cake Cutting</title>
+<title>Interactive Realistic Cake Cutting</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -26,83 +26,163 @@
         font-size: 18px;
         color: #8b4513;
     }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin-top: 15px;
+        background-color: #d2691e;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #b35915;
+    }
 </style>
 </head>
 <body>
 
-<h1>Interactive Cake Cutting 🎂</h1>
-<p>Click on the cake to make a cut and see the slices!</p>
+<h1>Interactive Realistic Cake 🎂</h1>
+<p>Click on a slice to cut it!</p>
 <canvas id="cakeCanvas" width="400" height="400"></canvas>
 <div id="info">Number of cuts: 0 | Pieces: 1</div>
+<button onclick="resetCake()">Reset Cake</button>
 
 <script>
 const canvas = document.getElementById('cakeCanvas');
 const ctx = canvas.getContext('2d');
 const radius = canvas.width / 2 - 10;
 const center = { x: canvas.width / 2, y: canvas.height / 2 };
-let cuts = []; // store angles of cuts
-let colors = ['#FF9999','#FFCC99','#99CCFF','#CCFF99','#FFB6C1','#FFA07A','#87CEFA','#90EE90','#FFD700','#FF69B4'];
+let slices = [{start: 0, end: 2*Math.PI}]; // start with 1 whole slice
+const colors = ['#FF9999','#FFCC99','#99CCFF','#CCFF99','#FFB6C1','#FFA07A','#87CEFA','#90EE90','#FFD700','#FF69B4'];
+let hoverSlice = null;
 
-// Draw the cake slices
-function drawCake() {
+// Draw cake slices
+function drawCake(highlight = null) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Sort cuts so slices are drawn in order
-    const sortedCuts = cuts.slice().sort((a,b) => a-b);
-    const totalCuts = sortedCuts.length;
+    slices.forEach((slice, i) => {
+        // Gradient for realistic effect
+        const grad = ctx.createRadialGradient(center.x, center.y, radius*0.2, center.x, center.y, radius);
+        grad.addColorStop(0, colors[i % colors.length]);
+        grad.addColorStop(1, '#fff2e6');
 
-    // Draw slices
-    if (totalCuts === 0) {
-        ctx.fillStyle = '#FFCC99';
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+        ctx.moveTo(center.x, center.y);
+        ctx.arc(center.x, center.y, radius, slice.start, slice.end);
+        ctx.closePath();
         ctx.fill();
-    } else {
-        for (let i = 0; i <= totalCuts; i++) {
-            const start = i === 0 ? 0 : sortedCuts[i-1];
-            const end = i === totalCuts ? Math.PI * 2 : sortedCuts[i];
-            ctx.fillStyle = colors[i % colors.length];
+
+        // Highlight on hover
+        if (highlight === i) {
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
             ctx.beginPath();
             ctx.moveTo(center.x, center.y);
-            ctx.arc(center.x, center.y, radius, start, end);
+            ctx.arc(center.x, center.y, radius, slice.start, slice.end);
             ctx.closePath();
             ctx.fill();
         }
 
-        // Draw cut lines
+        // Slice borders
         ctx.strokeStyle = '#8B4513';
         ctx.lineWidth = 2;
-        sortedCuts.forEach(angle => {
-            ctx.beginPath();
-            ctx.moveTo(center.x, center.y);
-            ctx.lineTo(center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle));
-            ctx.stroke();
-        });
-    }
+        ctx.stroke();
+
+        // Slice number
+        const midAngle = (slice.start + slice.end) / 2;
+        const textX = center.x + (radius/2) * Math.cos(midAngle);
+        const textY = center.y + (radius/2) * Math.sin(midAngle);
+        ctx.fillStyle = '#5C4033';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i+1, textX, textY);
+    });
 }
 
-// Add a cut
+// Find which slice is clicked
+function getSliceIndex(x, y) {
+    const angle = Math.atan2(y - center.y, x - center.x);
+    return slices.findIndex(s => {
+        if (s.start < s.end) return angle >= s.start && angle <= s.end;
+        else return angle >= s.start || angle <= s.end; // wrap around
+    });
+}
+
+// Animate the cut
+function animateCut(sliceIndex, angle) {
+    const slice = slices[sliceIndex];
+    const steps = 10;
+    let currentStep = 0;
+
+    function step() {
+        if (currentStep <= steps) {
+            const tempAngle = slice.start + (angle - slice.start) * (currentStep / steps);
+            const newSlices = [
+                {start: slice.start, end: tempAngle},
+                {start: tempAngle, end: slice.end}
+            ];
+            const tempSlices = slices.slice(0, sliceIndex).concat(newSlices, slices.slice(sliceIndex+1));
+            drawCake();
+            slices = tempSlices;
+            currentStep++;
+            requestAnimationFrame(step);
+        } else {
+            drawCake();
+        }
+    }
+    step();
+}
+
+// Handle click
 function addCut(event) {
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left - center.x;
-    const y = event.clientY - rect.top - center.y;
-    const angle = Math.atan2(y, x);
-    cuts.push(angle);
+    const x = (event.clientX || event.touches[0].clientX) - rect.left;
+    const y = (event.clientY || event.touches[0].clientY) - rect.top;
+    const index = getSliceIndex(x, y);
+    if (index === -1) return;
 
-    drawCake();
+    const slice = slices[index];
+    const clickAngle = Math.atan2(y - center.y, x - center.x);
+    animateCut(index, clickAngle);
 
-    const pieces = cuts.length * (cuts.length + 1) / 2 + 1;
-    document.getElementById('info').innerText = `Number of cuts: ${cuts.length} | Pieces: ${pieces}`;
+    // Finalize the slice after animation
+    const newSlices = [
+        {start: slice.start, end: clickAngle},
+        {start: clickAngle, end: slice.end}
+    ];
+    slices.splice(index, 1, ...newSlices);
+
+    document.getElementById('info').innerText = `Number of cuts: ${slices.length-1} | Pieces: ${slices.length}`;
 }
 
-// Initial draw
-drawCake();
+// Hover effect
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    hoverSlice = getSliceIndex(x, y);
+    drawCake(hoverSlice);
+});
+
+// Reset cake
+function resetCake() {
+    slices = [{start:0, end:2*Math.PI}];
+    drawCake();
+    document.getElementById('info').innerText = 'Number of cuts: 0 | Pieces: 1';
+}
+
+// Event listeners
 canvas.addEventListener('click', addCut);
 canvas.addEventListener('touchstart', function(e){
     e.preventDefault();
-    const touch = e.touches[0];
-    addCut({clientX: touch.clientX, clientY: touch.clientY});
-}, {passive: false});
+    addCut(e);
+}, {passive:false});
+
+// Initial draw
+drawCake();
 </script>
 
 </body>
