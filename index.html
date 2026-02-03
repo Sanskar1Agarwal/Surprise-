@@ -37,19 +37,6 @@ button{
     color:#fff;
     cursor:pointer;
 }
-#micBar{
-    width:220px;
-    height:10px;
-    background:#ffd6e0;
-    border-radius:10px;
-    overflow:hidden;
-    margin-bottom:12px;
-}
-#micLevel{
-    height:100%;
-    width:0%;
-    background:#ff4d6d;
-}
 canvas{
     width:100%;
     max-width:520px;
@@ -62,176 +49,106 @@ canvas{
 
 <div id="page1" class="page active">
     <h1>Happy Birthday 🎈</h1>
-    <button id="startBtn">Start 🎂</button>
+    <button onclick="start()">Start 🎂</button>
 </div>
 
 <div id="page2" class="page">
-    <div id="micBar"><div id="micLevel"></div></div>
     <canvas id="cake" width="520" height="520"></canvas>
 </div>
 
 <script>
-/* PAGE SWITCH */
-const startBtn=document.getElementById("startBtn");
-const page1=document.getElementById("page1");
-const page2=document.getElementById("page2");
+const canvas = document.getElementById("cake");
+const ctx = canvas.getContext("2d");
 
-startBtn.onclick=async()=>{
-    page1.classList.remove("active");
-    page2.classList.add("active");
-    await startMic();
-};
+const center = { x:260, y:270 };
+const R = 160;
+const H = 70;
 
-/* CANVAS */
-const canvas=document.getElementById("cake");
-const ctx=canvas.getContext("2d");
+let slices = [{a0:0, a1:Math.PI*2, pull:0}];
+let cuts = 0;
+const maxCuts = 6;
 
-const center={x:canvas.width/2,y:canvas.height/2};
-const radius=160;
-const cakeHeight=70;
+/* ===== DRAW SOLID SLICE ===== */
+function drawSlice(s){
+    const {a0,a1,pull} = s;
+    const mid = (a0+a1)/2;
+    const dx = pull*Math.cos(mid);
+    const dy = pull*Math.sin(mid);
 
-let flameOn=true;
-let flameT=0;
-let cuts=0;
-const maxCuts=6;
+    const cx = center.x + dx;
+    const cy = center.y + dy;
 
-let slices=[{start:0,end:Math.PI*2,offset:0}];
+    /* ---- Outer wall ---- */
+    ctx.fillStyle="#8b4513";
+    ctx.beginPath();
+    ctx.arc(cx, cy+H, R, a0, a1);
+    ctx.arc(cx, cy, R, a1, a0, true);
+    ctx.closePath();
+    ctx.fill();
 
-/* DRAW CAKE — CORRECT SOLID SLICES */
+    /* ---- Left cut face ---- */
+    drawCutFace(cx,cy,a0);
+
+    /* ---- Right cut face ---- */
+    drawCutFace(cx,cy,a1);
+
+    /* ---- Top ---- */
+    ctx.fillStyle="#ff8fab";
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,a0,a1);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/* ===== INNER CUT FACE ===== */
+function drawCutFace(cx,cy,angle){
+    const x1 = cx + R*Math.cos(angle);
+    const y1 = cy + R*Math.sin(angle);
+
+    ctx.fillStyle="#a0522d";
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(x1,y1);
+    ctx.lineTo(x1,y1+H);
+    ctx.lineTo(cx,cy+H);
+    ctx.closePath();
+    ctx.fill();
+}
+
+/* ===== DRAW CAKE ===== */
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    slices.forEach(s=>{
-        const mid=(s.start+s.end)/2;
-        const ox=s.offset*Math.cos(mid);
-        const oy=s.offset*Math.sin(mid);
-
-        const cx=center.x+ox;
-        const cy=center.y+oy;
-
-        /* INNER CUT FACE (SPONGE) */
-        ctx.fillStyle="#a0522d";
-        ctx.beginPath();
-        ctx.moveTo(cx,cy);
-        ctx.lineTo(
-            cx + radius*Math.cos(s.start),
-            cy + radius*Math.sin(s.start)
-        );
-        ctx.lineTo(
-            cx + radius*Math.cos(s.start),
-            cy + radius*Math.sin(s.start) + cakeHeight
-        );
-        ctx.lineTo(cx,cy + cakeHeight);
-        ctx.closePath();
-        ctx.fill();
-
-        /* OUTER SPONGE WALL */
-        ctx.fillStyle="#8b4513";
-        ctx.beginPath();
-        ctx.arc(cx,cy+cakeHeight,radius,s.start,s.end);
-        ctx.arc(cx,cy,radius,s.end,s.start,true);
-        ctx.closePath();
-        ctx.fill();
-
-        /* TOP CREAM */
-        ctx.fillStyle="#ff8fab";
-        ctx.beginPath();
-        ctx.moveTo(cx,cy);
-        ctx.arc(cx,cy,radius,s.start,s.end);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.strokeStyle="#c9184a";
-        ctx.stroke();
-    });
-
-    drawCandle();
+    slices.forEach(drawSlice);
 }
 
-/* CANDLE */
-function drawCandle(){
-    const x=center.x;
-    const y=center.y-radius-35;
-
-    ctx.fillStyle="#fff";
-    ctx.fillRect(x-6,y,12,35);
-
-    if(!flameOn) return;
-
-    flameT+=0.05;
-    const sway=Math.sin(flameT)*2;
-    const lift=Math.cos(flameT*1.3)*3;
-
-    ctx.save();
-    ctx.translate(x+sway,y-14+lift);
-    ctx.fillStyle="rgba(255,183,3,0.5)";
-    ctx.beginPath();
-    ctx.ellipse(0,0,10,16,0,0,Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle="#ffb703";
-    ctx.beginPath();
-    ctx.ellipse(0,0,6,12,0,0,Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-}
-
-/* CUT CAKE */
-canvas.onclick=()=>{
+/* ===== CUT CAKE ===== */
+canvas.onclick = ()=>{
     if(cuts>=maxCuts) return;
     cuts++;
-    const step=Math.PI*2/(cuts+1);
+    const step = Math.PI*2/(cuts+1);
     slices=[];
     for(let i=0;i<cuts+1;i++){
         slices.push({
-            start:i*step,
-            end:(i+1)*step,
-            offset:35
+            a0:i*step,
+            a1:(i+1)*step,
+            pull:35
         });
     }
 };
 
-/* MICROPHONE (frequency based) */
-async function startMic(){
-    const bar=document.getElementById("micLevel");
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    await audioCtx.resume();
-
-    const analyser=audioCtx.createAnalyser();
-    analyser.fftSize=1024;
-
-    const mic=audioCtx.createMediaStreamSource(stream);
-    mic.connect(analyser);
-
-    const freq=new Uint8Array(analyser.frequencyBinCount);
-    let sustain=0;
-
-    function listen(){
-        analyser.getByteFrequencyData(freq);
-        let energy=0;
-        for(let i=2;i<20;i++) energy+=freq[i];
-        energy/=18;
-
-        bar.style.width=Math.min(100,energy*1.5)+"%";
-
-        if(energy>25) sustain++;
-        else sustain=0;
-
-        if(sustain>20 && flameOn){
-            flameOn=false;
-        }
-        requestAnimationFrame(listen);
-    }
-    listen();
+/* ===== PAGE SWITCH ===== */
+function start(){
+    document.querySelector(".page.active").classList.remove("active");
+    document.getElementById("page2").classList.add("active");
 }
 
 /* LOOP */
-function animate(){
+function loop(){
     drawCake();
-    requestAnimationFrame(animate);
+    requestAnimationFrame(loop);
 }
-animate();
+loop();
 </script>
 
 </body>
