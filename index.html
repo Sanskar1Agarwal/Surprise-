@@ -32,9 +32,8 @@ body {
 h1 {
     font-size: clamp(32px, 7vw, 56px);
     color: #d6336c;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     white-space: nowrap;
-    text-align: center;
 }
 
 button {
@@ -45,6 +44,22 @@ button {
     background: #ff4d6d;
     color: white;
     cursor: pointer;
+}
+
+#micBar {
+    width: 200px;
+    height: 10px;
+    border-radius: 10px;
+    background: #ffd6e0;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+#micLevel {
+    height: 100%;
+    width: 0%;
+    background: #ff4d6d;
+    transition: width 0.1s linear;
 }
 
 canvas {
@@ -65,25 +80,22 @@ canvas {
 
 <!-- PAGE 2 -->
 <div id="page2" class="page">
+    <div id="micBar"><div id="micLevel"></div></div>
     <canvas id="cakeCanvas" width="520" height="520"></canvas>
 </div>
 
 <script>
-/* ================= PAGE SWITCH + MIC (FIXED) ================= */
 const startBtn = document.getElementById("startBtn");
 const page1 = document.getElementById("page1");
 const page2 = document.getElementById("page2");
 
 startBtn.addEventListener("click", async () => {
-    // PAGE SWITCH
     page1.classList.remove("active");
     page2.classList.add("active");
-
-    // START MIC — DIRECT USER GESTURE ✅
     await startMic();
 });
 
-/* ================= CANVAS ================= */
+/* ===== Canvas ===== */
 const canvas = document.getElementById("cakeCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -92,38 +104,29 @@ const radius = 170;
 const cakeHeight = 90;
 const maxCuts = 6;
 
-let cuts = 0;
 let flameOn = true;
+let cuts = 0;
 
-/* ================= RESIZE FIX ================= */
-function updateCenter() {
-    center.x = canvas.width / 2;
-    center.y = canvas.height / 2;
-    drawCake();
-}
-window.addEventListener("resize", updateCenter);
+/* Floating flame variables */
+let flameTime = 0;
 
-/* ================= CAKE DATA ================= */
-let slices = [{
-    start: 0,
-    end: Math.PI * 2,
-    offset: 0
-}];
+/* ===== Cake slices ===== */
+let slices = [{ start: 0, end: Math.PI * 2, offset: 0 }];
 
-/* ================= DRAW ================= */
+/* ===== Draw ===== */
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    slices.forEach(slice => {
-        const mid = (slice.start + slice.end) / 2;
-        const ox = slice.offset * Math.cos(mid);
-        const oy = slice.offset * Math.sin(mid);
+    slices.forEach(s => {
+        const mid = (s.start + s.end) / 2;
+        const ox = s.offset * Math.cos(mid);
+        const oy = s.offset * Math.sin(mid);
 
         // Sponge
         ctx.fillStyle = "#8b4513";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy + cakeHeight);
-        ctx.arc(center.x + ox, center.y + oy + cakeHeight, radius, slice.start, slice.end);
+        ctx.arc(center.x + ox, center.y + oy + cakeHeight, radius, s.start, s.end);
         ctx.closePath();
         ctx.fill();
 
@@ -131,105 +134,109 @@ function drawCake() {
         ctx.fillStyle = "#ff8fab";
         ctx.beginPath();
         ctx.moveTo(center.x + ox, center.y + oy);
-        ctx.arc(center.x + ox, center.y + oy, radius, slice.start, slice.end);
+        ctx.arc(center.x + ox, center.y + oy, radius, s.start, s.end);
         ctx.closePath();
         ctx.fill();
 
         ctx.strokeStyle = "#c9184a";
-        ctx.lineWidth = 2;
         ctx.stroke();
     });
 
     drawCandle();
 }
 
-/* ================= CANDLE ================= */
+/* ===== Candle with FLOATING FLAME ===== */
 function drawCandle() {
     const x = center.x;
     const y = center.y - radius - 35;
 
-    ctx.fillStyle = "#fff";
+    // Candle body
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(x - 6, y, 12, 35);
 
-    if (flameOn) {
-        ctx.fillStyle = "#ffb703";
-        ctx.beginPath();
-        ctx.ellipse(x, y - 12, 6, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-    }
+    if (!flameOn) return;
+
+    flameTime += 0.05;
+
+    const floatY = Math.sin(flameTime) * 3;
+    const swayX = Math.cos(flameTime * 1.3) * 2;
+    const scale = 1 + Math.sin(flameTime * 2) * 0.08;
+
+    ctx.save();
+    ctx.translate(x + swayX, y - 12 + floatY);
+    ctx.scale(scale, scale);
+
+    // Outer glow
+    ctx.fillStyle = "rgba(255, 183, 3, 0.5)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 10, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner flame
+    ctx.fillStyle = "#ffb703";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 6, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
 }
 
-/* ================= CAKE CUT ================= */
-function cutCake() {
+/* ===== Cake cutting ===== */
+canvas.addEventListener("click", () => {
     if (cuts >= maxCuts) return;
-
     cuts++;
     const pieces = cuts + 1;
     const step = Math.PI * 2 / pieces;
-
     slices = [];
     for (let i = 0; i < pieces; i++) {
-        slices.push({
-            start: i * step,
-            end: (i + 1) * step,
-            offset: 0
-        });
+        slices.push({ start: i * step, end: (i + 1) * step, offset: 40 });
     }
-    animateSplit();
-}
+});
 
-function animateSplit() {
-    let t = 0;
-    function anim() {
-        t++;
-        slices.forEach(s => s.offset = Math.min(40, t * 2));
-        drawCake();
-        if (t < 20) requestAnimationFrame(anim);
-    }
-    anim();
-}
-
-/* ================= MICROPHONE (REAL FIX) ================= */
+/* ===== MICROPHONE ===== */
 async function startMic() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        await audioCtx.resume();
+    const levelBar = document.getElementById("micLevel");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
 
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 1024;
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
 
-        const mic = audioCtx.createMediaStreamSource(stream);
-        mic.connect(analyser);
+    const mic = audioCtx.createMediaStreamSource(stream);
+    mic.connect(analyser);
 
-        const data = new Uint8Array(analyser.fftSize);
+    const data = new Uint8Array(analyser.fftSize);
+    let sustained = 0;
 
-        function listen() {
-            analyser.getByteTimeDomainData(data);
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) {
-                const v = (data[i] - 128) / 128;
-                sum += v * v;
-            }
-            const rms = Math.sqrt(sum / data.length);
-
-            if (rms > 0.12 && flameOn) {
-                flameOn = false;
-                drawCake();
-            }
-            requestAnimationFrame(listen);
+    function listen() {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
         }
-        listen();
-    } catch (err) {
-        alert("Microphone access is required to blow the candle 🎤");
+        const rms = Math.sqrt(sum / data.length);
+
+        levelBar.style.width = Math.min(100, rms * 400) + "%";
+
+        if (rms > 0.02) sustained++;
+        else sustained = 0;
+
+        if (sustained > 20 && flameOn) {
+            flameOn = false;
+        }
+        requestAnimationFrame(listen);
     }
+    listen();
 }
 
-/* ================= INTERACTION ================= */
-canvas.addEventListener("click", cutCake);
-
-/* Init */
-updateCenter();
+/* ===== Animation Loop ===== */
+function animate() {
+    drawCake();
+    requestAnimationFrame(animate);
+}
+animate();
 </script>
 
 </body>
