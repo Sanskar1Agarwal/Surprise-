@@ -22,22 +22,18 @@ section{
 }
 section.active{display:block;}
 
-button{
+button,input{
   padding:14px 28px;
   border:none;
   border-radius:25px;
-  background:white;
-  color:#ff4d6d;
   font-size:1em;
-  cursor:pointer;
-  margin:10px;
 }
 
-input{
-  padding:12px;
-  border-radius:20px;
-  border:none;
-  text-align:center;
+button{
+  background:white;
+  color:#ff4d6d;
+  cursor:pointer;
+  margin:10px;
 }
 
 h1{font-size:2.2em;}
@@ -51,7 +47,7 @@ h1{font-size:2.2em;}
   overflow:hidden;
 }
 
-/* floating hearts bg */
+/* floating hearts */
 .bg-heart{
   position:absolute;
   animation:float 6s linear infinite;
@@ -61,37 +57,37 @@ h1{font-size:2.2em;}
   100%{transform:translateY(-10vh);opacity:0;}
 }
 
-/* Valentine NO button */
-#noBtn{
-  position:absolute;
-}
+/* NO button */
+#noBtn{position:absolute;}
 
-/* Cake */
+/* ===== CAKE ===== */
 .cake{
   position:relative;
-  width:240px;
-  height:200px;
+  width:260px;
+  height:230px;
   margin:40px auto;
 }
 
+/* layers */
 .layer{
   position:absolute;
   left:50%;
   transform:translateX(-50%);
   background:#ff9fbf;
   border-radius:20px;
+  transition:.5s;
 }
 
 .bottom{
-  width:240px;
-  height:100px;
+  width:260px;
+  height:110px;
   bottom:0;
 }
 
 .top{
-  width:160px;
-  height:70px;
-  bottom:90px;
+  width:170px;
+  height:75px;
+  bottom:100px;
 }
 
 .icing{
@@ -103,15 +99,18 @@ h1{font-size:2.2em;}
   border-radius:20px;
 }
 
+/* candles */
 .candle{
   position:absolute;
   width:10px;
-  height:30px;
+  height:32px;
   background:white;
-  top:-30px;
-  left:50%;
-  transform:translateX(-50%);
+  top:-32px;
+  cursor:pointer;
 }
+.candle:nth-child(1){left:45%;}
+.candle:nth-child(2){left:55%;}
+.candle:nth-child(3){left:65%;}
 
 .flame{
   width:8px;
@@ -129,19 +128,31 @@ h1{font-size:2.2em;}
   to{transform:scale(1.2);}
 }
 
-/* Cake slices */
-.slice{
+/* knife */
+#knife{
   position:absolute;
-  width:120px;
-  height:100px;
-  background:#ff9fbf;
-  bottom:0;
-  left:60px;
-  clip-path:polygon(50% 0,100% 100%,0 100%);
-  opacity:0;
-  transition:0.8s;
+  font-size:40px;
+  top:-60px;
+  left:50%;
+  transform:translateX(-50%);
+  display:none;
+  transition:.3s;
 }
 
+/* slices */
+.slice{
+  position:absolute;
+  width:130px;
+  height:110px;
+  background:#ff9fbf;
+  bottom:0;
+  left:65px;
+  clip-path:polygon(50% 0,100% 100%,0 100%);
+  opacity:0;
+  transition:.8s ease;
+}
+
+/* fireworks */
 .firework{
   position:absolute;
   width:6px;
@@ -183,23 +194,27 @@ h1{font-size:2.2em;}
 <!-- PAGE 3 -->
 <section id="s3">
   <h1>🎉 Happy Birthday Muskan 🎉</h1>
+  <p id="hint">Blow the candles 🕯</p>
 
   <div class="cake" id="cake">
-    <div class="layer top">
+    <div id="knife">🔪</div>
+
+    <div class="layer top" id="topLayer">
       <div class="icing"></div>
       <div class="candle"><div class="flame"></div></div>
+      <div class="candle"><div class="flame"></div></div>
+      <div class="candle"><div class="flame"></div></div>
     </div>
-    <div class="layer bottom">
+
+    <div class="layer bottom" id="bottomLayer">
       <div class="icing"></div>
     </div>
 
-    <div class="slice" id="slice1"></div>
-    <div class="slice" id="slice2"></div>
-    <div class="slice" id="slice3"></div>
-    <div class="slice" id="slice4"></div>
+    <div class="slice" id="s1c"></div>
+    <div class="slice" id="s2c"></div>
+    <div class="slice" id="s3c"></div>
+    <div class="slice" id="s4c"></div>
   </div>
-
-  <p>Tap cake to cut 🎂</p>
 </section>
 
 <script>
@@ -220,7 +235,7 @@ function checkCode(){
 const target=new Date("2026-02-08T00:00:00").getTime();
 setInterval(()=>{
   const d=target-new Date().getTime();
-  timer.innerText =
+  timer.innerText=
     Math.floor(d/86400000)+"d "+
     Math.floor((d%86400000)/3600000)+"h "+
     Math.floor((d%3600000)/60000)+"m "+
@@ -233,57 +248,75 @@ noBtn.onmouseover=()=>{
   noBtn.style.top=Math.random()*70+"%";
 };
 
-/* GAME – FIXED */
+/* GAME */
 let score=0;
+const scoreSpan=document.getElementById("score");
+
 function startGame(){
   score=0;
   scoreSpan.textContent=0;
   gameArea.innerHTML="";
-
   const interval=setInterval(()=>{
-    const heart=document.createElement("div");
-    heart.innerText=Math.random()<0.3?"💔":"💖";
-    heart.style.position="absolute";
-    heart.style.left=Math.random()*(gameArea.clientWidth-30)+"px";
-    heart.style.top=Math.random()*(gameArea.clientHeight-30)+"px";
-    heart.style.fontSize="30px";
-    heart.style.cursor="pointer";
-
-    heart.onclick=()=>{
-      if(heart.innerText==="💖"){
-        score++;
-        scoreSpan.textContent=score;
-      }
-      heart.remove();
+    const h=document.createElement("div");
+    h.innerText=Math.random()<0.3?"💔":"💖";
+    h.style.position="absolute";
+    h.style.left=Math.random()*(gameArea.clientWidth-30)+"px";
+    h.style.top=Math.random()*(gameArea.clientHeight-30)+"px";
+    h.style.fontSize="30px";
+    h.onclick=()=>{
+      if(h.innerText==="💖") score++;
+      scoreSpan.textContent=score;
+      h.remove();
       if(score===29){
         clearInterval(interval);
         next(3);
       }
     };
-
-    gameArea.appendChild(heart);
-    setTimeout(()=>heart.remove(),1500);
+    gameArea.appendChild(h);
+    setTimeout(()=>h.remove(),1500);
   },600);
 }
 
-const scoreSpan=document.getElementById("score");
+/* ===== CANDLE BLOW ===== */
+let candlesLeft=3;
+document.querySelectorAll(".candle").forEach(c=>{
+  c.onclick=()=>{
+    const flame=c.querySelector(".flame");
+    if(flame){
+      flame.remove();
+      candlesLeft--;
+      if(candlesLeft===0){
+        hint.innerText="Cut the cake 🎂";
+        knife.style.display="block";
+      }
+    }
+  };
+});
 
-/* CAKE CUT – FIXED */
+/* ===== CAKE CUT WITH KNIFE ===== */
 const slices=[
-  {el: slice1, x:-80, y:20},
-  {el: slice2, x:80, y:20},
-  {el: slice3, x:-60, y:-30},
-  {el: slice4, x:60, y:-30}
+  {el:s1c,x:-100,y:20},
+  {el:s2c,x:100,y:20},
+  {el:s3c,x:-70,y:-40},
+  {el:s4c,x:70,y:-40}
 ];
 let cutIndex=0;
 
-cake.onclick=()=>{
-  if(cutIndex<slices.length){
-    const s=slices[cutIndex];
-    s.el.style.opacity=1;
-    s.el.style.transform=`translate(${s.x}px,${s.y}px)`;
-    cutIndex++;
-    if(cutIndex===slices.length) fireworks();
+cake.onclick=e=>{
+  if(candlesLeft>0 || cutIndex>=slices.length) return;
+
+  knife.style.top="20px";
+  setTimeout(()=>knife.style.top="-60px",300);
+
+  const s=slices[cutIndex];
+  s.el.style.opacity=1;
+  s.el.style.transform=`translate(${s.x}px,${s.y}px)`;
+  cutIndex++;
+
+  if(cutIndex===slices.length){
+    topLayer.style.opacity=0;
+    bottomLayer.style.opacity=0;
+    fireworks();
   }
 };
 
