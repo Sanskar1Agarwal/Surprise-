@@ -51,28 +51,32 @@ let slices = [{
     sprinkles: []
 }];
 
-// Sprinkles per slice
+// ---------- Sprinkles ----------
 function makeSprinkles(start, end) {
     const arr = [];
     const count = 10;
     for (let i = 0; i < count; i++) {
-        const a = start + (i / count) * (end - start);
+        const angle = start + (i / count) * (end - start);
         arr.push({
-            angle: a,
+            angle,
             r: radius * 0.65,
             color: ["#ff4d4d", "#ffd633", "#66ff66", "#ff66cc"][i % 4]
         });
     }
     return arr;
 }
-
 slices[0].sprinkles = makeSprinkles(0, Math.PI * 2);
 
-// Draw cake
+// ---------- Draw Cake ----------
 function drawCake() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    slices.forEach(slice => {
+    // Sort slices back → front to prevent overlap
+    const sortedSlices = [...slices].sort(
+        (a, b) => Math.sin((a.start + a.end)/2) - Math.sin((b.start + b.end)/2)
+    );
+
+    sortedSlices.forEach(slice => {
         const mid = (slice.start + slice.end) / 2;
         const ox = slice.offset * Math.cos(mid);
         const oy = slice.offset * Math.sin(mid);
@@ -106,7 +110,7 @@ function drawCake() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Sprinkles move with slice
+        // Sprinkles (move with slice)
         slice.sprinkles.forEach(s => {
             const x = center.x + ox + s.r * Math.cos(s.angle);
             const y = center.y + oy + s.r * Math.sin(s.angle);
@@ -120,7 +124,7 @@ function drawCake() {
     drawCandle();
 }
 
-// Candle
+// ---------- Candle ----------
 function drawCandle() {
     const x = center.x;
     const y = center.y - radius - 25;
@@ -136,7 +140,7 @@ function drawCandle() {
     }
 }
 
-// Cut cake
+// ---------- Cutting ----------
 function cutCake() {
     if (cuts >= maxCuts) return;
 
@@ -157,7 +161,6 @@ function cutCake() {
     animateSplit();
 }
 
-// Animate slice separation
 function animateSplit() {
     let t = 0;
     function frame() {
@@ -169,7 +172,7 @@ function animateSplit() {
     frame();
 }
 
-// 🎤 Candle blow detection (WORKING)
+// ---------- Microphone (WORKING) ----------
 async function startMic() {
     if (micStarted) return;
     micStarted = true;
@@ -186,7 +189,7 @@ async function startMic() {
 
     const data = new Uint8Array(analyser.fftSize);
 
-    function detect() {
+    function detectBlow() {
         analyser.getByteTimeDomainData(data);
         let sum = 0;
         for (let i = 0; i < data.length; i++) {
@@ -199,14 +202,14 @@ async function startMic() {
             candleLit = false;
             drawCake();
         }
-        requestAnimationFrame(detect);
+        requestAnimationFrame(detectBlow);
     }
-    detect();
+    detectBlow();
 }
 
-// User interaction
+// ---------- Events ----------
 canvas.addEventListener("click", () => {
-    startMic();   // required for mic permission
+    startMic();   // required by browser
     cutCake();
 });
 
