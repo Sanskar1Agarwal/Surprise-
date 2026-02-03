@@ -3,84 +3,66 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Realistic Cake Cutting</title>
+<title>Happy Birthday Cake 🎂</title>
 <style>
     body {
-        font-family: Arial, sans-serif;
+        font-family: 'Arial', sans-serif;
         text-align: center;
-        background-color: #fff8f0;
-        padding: 20px;
+        background: #fff8f0;
+        padding: 30px;
     }
     h1 {
         color: #d2691e;
+        font-size: 48px;
+        margin-bottom: 20px;
     }
     canvas {
-        border: 2px solid #d2691e;
-        border-radius: 50%;
+        border: none;
         margin-top: 20px;
         cursor: pointer;
         max-width: 90vw;
     }
     #info {
         margin-top: 20px;
-        font-size: 18px;
+        font-size: 20px;
         color: #8b4513;
-    }
-    button {
-        padding: 10px 20px;
-        font-size: 16px;
-        margin-top: 10px;
-        background-color: #d2691e;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    button:hover {
-        background-color: #b35915;
     }
 </style>
 </head>
 <body>
 
-<h1>Realistic Cake Cutting 🎂</h1>
-<p>Click the cake to cut it into equal slices (max 6 cuts)!</p>
+<h1>Happy Birthday 🎈</h1>
 <canvas id="cakeCanvas" width="500" height="500"></canvas>
-<div id="info">Slices cut: 0 | Pieces: 1</div>
-<button onclick="resetCake()">Reset Cake</button>
+<div id="info">Slices cut: 0 | Pieces: 1 | Candle: 🔥</div>
 
 <script>
 const canvas = document.getElementById('cakeCanvas');
 const ctx = canvas.getContext('2d');
-const radius = canvas.width / 2 - 40;
+const radius = canvas.width/2 - 40;
 const center = {x: canvas.width/2, y: canvas.height/2};
-
 const maxCuts = 6;
 let cutCount = 0;
 let slices = [{start:0,end:2*Math.PI,offset:0}];
+let candleLit = true;
 
-function drawSprinkles(slice){
-    const num = 15;
-    for(let i=0;i<num;i++){
-        const angle = slice.start + Math.random()*(slice.end-slice.start);
-        const r = Math.random()*radius*0.7;
-        const x = center.x + (r+slice.offset)*Math.cos(angle);
-        const y = center.y + (r+slice.offset)*Math.sin(angle);
-        ctx.beginPath();
-        ctx.fillStyle=['#FF0000','#00FF00','#FFFF00','#FFA500','#FF69B4'][Math.floor(Math.random()*5)];
-        ctx.arc(x,y,3,0,Math.PI*2);
-        ctx.fill();
-    }
+// Even sprinkle positions
+const sprinkleCount = 40;
+let sprinkles = [];
+for(let i=0;i<sprinkleCount;i++){
+    const angle = (i/sprinkleCount)*2*Math.PI;
+    const r = radius*0.6;
+    sprinkles.push({x:center.x+r*Math.cos(angle), y:center.y+r*Math.sin(angle), color: ['#FF0000','#00FF00','#FFFF00','#FFA500','#FF69B4'][i%5]});
 }
 
+// Draw cake
 function drawCake(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
+    // Draw cake slices
     slices.forEach(slice=>{
         const offsetX = slice.offset*Math.cos((slice.start+slice.end)/2);
         const offsetY = slice.offset*Math.sin((slice.start+slice.end)/2);
 
-        // Draw cake slice
         const grad = ctx.createRadialGradient(center.x+offsetX, center.y+offsetY, radius*0.2, center.x+offsetX, center.y+offsetY, radius);
         grad.addColorStop(0,'#fff5e6'); // icing
         grad.addColorStop(0.3,'#FFDAB9'); // cake
@@ -93,42 +75,56 @@ function drawCake(){
         ctx.closePath();
         ctx.fill();
 
-        // Slice border
         ctx.strokeStyle='#8B4513';
         ctx.lineWidth=2;
         ctx.stroke();
-
-        // Draw sprinkles
-        drawSprinkles(slice);
     });
+
+    // Draw evenly placed sprinkles on top (stable)
+    sprinkles.forEach(s=>{
+        ctx.beginPath();
+        ctx.fillStyle=s.color;
+        ctx.arc(s.x,s.y,5,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    // Draw candle on top
+    const candleX = center.x;
+    const candleY = center.y - radius - 20;
+    ctx.fillStyle='#FFFFFF';
+    ctx.fillRect(candleX-5,candleY,10,40); // candle stick
+
+    // Flame
+    if(candleLit){
+        ctx.beginPath();
+        ctx.fillStyle='orange';
+        ctx.arc(candleX,candleY,8,0,Math.PI*2);
+        ctx.fill();
+    }
 }
 
+// Cut cake into equal slices
 function cutCake(){
     if(cutCount>=maxCuts) return;
-
     cutCount++;
     const numSlices = cutCount;
     const angle = 2*Math.PI/numSlices;
     slices = [];
-
-    // Create slices with offset 0
     for(let i=0;i<numSlices;i++){
         slices.push({start:i*angle,end:(i+1)*angle,offset:0});
     }
-
     animateSeparation();
-    document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${numSlices}`;
+    document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${numSlices} | Candle: ${candleLit?'🔥':'💨'}`;
 }
 
 // Animate slices moving apart
 function animateSeparation(){
     let step=0;
     const maxStep=20;
-
     function animate(){
         step++;
         slices.forEach(slice=>{
-            slice.offset = (step/maxStep)*30; // maximum 30px separation
+            slice.offset = (step/maxStep)*30;
         });
         drawCake();
         if(step<maxStep) requestAnimationFrame(animate);
@@ -136,18 +132,48 @@ function animateSeparation(){
     animate();
 }
 
+// Reset cake
 function resetCake(){
     cutCount=0;
     slices=[{start:0,end:2*Math.PI,offset:0}];
+    candleLit = true;
     drawCake();
-    document.getElementById('info').innerText='Slices cut: 0 | Pieces: 1';
+    document.getElementById('info')='Slices cut: 0 | Pieces: 1 | Candle: 🔥';
 }
 
-// Event
+// Microphone blow detection
+async function setupMic(){
+    try{
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        function detectBlow(){
+            analyser.getByteFrequencyData(dataArray);
+            const volume = dataArray.reduce((a,b)=>a+b)/dataArray.length;
+            if(volume>100 && candleLit){ // threshold for blow
+                candleLit=false;
+                drawCake();
+                document.getElementById('info').innerText=`Slices cut: ${cutCount} | Pieces: ${cutCount===0?1:cutCount} | Candle: 💨`;
+            }
+            requestAnimationFrame(detectBlow);
+        }
+        detectBlow();
+    }catch(err){
+        console.log("Microphone access denied", err);
+    }
+}
+
+// Events
 canvas.addEventListener('click',cutCake);
 
-// Initial draw
+// Initialize
 drawCake();
+setupMic();
 </script>
 
 </body>
